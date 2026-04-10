@@ -224,7 +224,7 @@ def api_add_product():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    cursor.execute("SELECT id FROM Products WHERE article_no = ?", (article_no,))
+    cursor.execute("SELECT id FROM Products WHERE article_no = %s", (article_no,))
     if cursor.fetchone():
         conn.close()
         return jsonify({"error": "Article number already exists!"}), 400
