@@ -557,17 +557,18 @@ def record_weekly_snapshot():
     try:
         cursor = conn.cursor()
         
-        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as pairs FROM Sales")
+        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as pairs FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_pairs_sold = row['pairs'] if row and 'pairs' in row else 0
         
-        cursor.execute("SELECT COALESCE(SUM(sold_price * quantity), 0) as rev FROM Sales")
+        cursor.execute("SELECT COALESCE(SUM(sold_price * quantity), 0) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_rev = row['rev'] if row and 'rev' in row else 0
         
         cursor.execute("""
             SELECT COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as profit
             FROM Sales s JOIN Products p ON s.product_id = p.id
+            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days' AND s.sale_date < CURRENT_DATE
         """)
         row = cursor.fetchone()
         net_prof = row['profit'] if row and 'profit' in row else 0

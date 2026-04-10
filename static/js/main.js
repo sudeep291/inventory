@@ -547,8 +547,8 @@ async function loadAdvancedAnalytics() {
         });
 
         // Hero (The "Accurate SaaS Equations")
-        animateValue(document.getElementById('ovSales'), 0, tPairs, 1500);
-        animateValue(document.getElementById('ovRevenue'), 0, data.stock.potential_revenue, 1500, true);
+        animateValue(document.getElementById('ovSales'), 0, data.weekly.pairs, 1500);
+        animateValue(document.getElementById('ovRevenue'), 0, data.weekly.revenue, 1500, true);
         animateValue(document.getElementById('ovStock'), 0, data.stock.total_stock, 1500);
 
         // Matrix
