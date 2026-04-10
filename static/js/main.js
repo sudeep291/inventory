@@ -33,32 +33,46 @@ function playSuccessSequence(containerId, message, callback) {
     }, 2000);
 }
 
-async function fetchProducts() {
+// Enterprise Global Fetch Wrapper (Zero-Silence Infrastructure)
+async function fetchAPI(url, options = {}) {
     try {
-        const res = await fetch('/api/inventory');
-        const data = await res.json();
-        if(!data.error) productsCache = data.products;
-    } catch(err){}
+        const response = await fetch(url, options);
+        const data = await response.json();
+        
+        if (!response.ok || data.error) {
+            const errorMsg = data.error || `Server Error: ${response.status}`;
+            showToast(`Error: ${errorMsg}`);
+            return null;
+        }
+        return data;
+    } catch (err) {
+        console.error("Network Error:", err);
+        showToast("Network connection busy. Please retry.");
+        return null;
+    }
+}
+
+async function fetchProducts() {
+    const data = await fetchAPI('/api/inventory');
+    if (data) productsCache = data.products;
 }
 
 /* ==================================
    INDEX.HTML / DASHBOARD
 ================================== */
 async function loadWelcomeDashboard() {
-    try {
-        const res = await fetch('/api/stats');
-        const data = await res.json();
-        if(data.error) return;
+    const data = await fetchAPI('/api/stats');
+    if (!data) return;
 
-        document.getElementById('dashCards').innerHTML = `
-            <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Products</h4><span class="val">${data.total_products}</span></a>
-            <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></a>
-            <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></a>
-            <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></a>
-        `;
-        
-        const resSales = await fetch('/api/sales_advanced');
-        const salesData = await resSales.json();
+    document.getElementById('dashCards').innerHTML = `
+        <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Products</h4><span class="val">${data.total_products}</span></a>
+        <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></a>
+        <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></a>
+        <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></a>
+    `;
+    
+    const salesData = await fetchAPI('/api/sales_advanced');
+    if (!salesData) return;
         let lsHTML = '';
         salesData.stock.low_stock.forEach(item => {
             lsHTML += `<tr>
@@ -69,8 +83,8 @@ async function loadWelcomeDashboard() {
             </tr>`;
         });
         document.getElementById('lowStockAlerts').innerHTML = lsHTML || '<tr><td colspan="4" class="text-profit">All stock is healthy!</td></tr>';
-    } catch(err) {}
-}
+    } 
+
 
 /* ==================================
    OVERVIEW.HTML
@@ -156,19 +170,12 @@ function triggerImageUpload(productId) {
         
         const formData = new FormData();
         formData.append('image', file);
-        try {
-            const res = await fetch(`/api/products/${productId}/image`, { method: 'POST', body: formData });
-            const data = await res.json();
-            if(data.success) {
-                imgEl.src = `/static/${data.image_path}?t=${new Date().getTime()}`;
-                showToast("Product Image Updated!");
-            } else {
-                imgEl.src = originalSrc;
-                showToast("Error updating image");
-            }
-        } catch(err) { 
+        const data = await fetchAPI(`/api/products/${productId}/image`, { method: 'POST', body: formData });
+        if(data && data.success) {
+            imgEl.src = `/static/${data.image_path}?t=${new Date().getTime()}`;
+            showToast("Product Image Updated!");
+        } else {
             imgEl.src = originalSrc;
-            showToast("Upload failed"); 
         }
     };
     input.click();
@@ -176,16 +183,11 @@ function triggerImageUpload(productId) {
 
 async function removeProductImage(productId) {
     if(!confirm("Are you sure you want to remove this product's image?")) return;
-    try {
-        const res = await fetch(`/api/products/${productId}/image/remove`, { method: 'POST' });
-        const data = await res.json();
-        if(data.success) {
-            showToast("Product image removed successfully!");
-            await loadOverviewTable(); // Reload to show the folder upload UI
-        } else {
-            showToast("Error updating image");
-        }
-    } catch(err) { showToast("Removal failed due to network error"); }
+    const data = await fetchAPI(`/api/products/${productId}/image/remove`, { method: 'POST' });
+    if(data && data.success) {
+        showToast("Product image removed successfully!");
+        await loadOverviewTable();
+    }
 }
 
 /* ==================================
@@ -283,19 +285,17 @@ async function handleSaleSubmit(e) {
     const soldPx = document.getElementById('sale_sp').value;
     const discountVal = parseFloat(document.getElementById('sale_discount').value) || 0;
     
-    try {
-        const res = await fetch('/api/stock/adjust', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ size_id: sizeId, amount: parseInt(amount), operation: 'subtract', sold_price: soldPx, discount_applied: discountVal })
+    const data = await fetchAPI('/api/stock/adjust', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ size_id: sizeId, amount: parseInt(amount), operation: 'subtract', sold_price: soldPx, discount_applied: discountVal })
+    });
+    
+    if (data && data.success) {
+        playSuccessSequence('sellResultContainer', 'Sale Registered Successfully!', async () => {
+            document.getElementById('sellSearchInput').value = '';
+            await fetchProducts(); 
         });
-        const data = await res.json();
-        if (data.success) {
-            playSuccessSequence('sellResultContainer', 'Sale Registered Successfully!', async () => {
-                document.getElementById('sellSearchInput').value = '';
-                await fetchProducts(); 
-            });
-        } else { showToast("Error: " + data.error); }
-    } catch(err) { showToast("Network Error updating stock"); }
+    }
 }
 
 /* ==================================
@@ -408,20 +408,17 @@ function previewBatchUpdate() {
 }
 
 async function executeBatchUpdate() {
-    try {
-        const res = await fetch('/api/stock/adjust_batch', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ updates: batchPayload })
+    const data = await fetchAPI('/api/stock/adjust_batch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: batchPayload })
+    });
+    if (data && data.success) {
+        document.getElementById('batchConfirmModal').style.display = 'none';
+        playSuccessSequence('updateResultContainer', 'Stock Augmented Safely!', async () => {
+            document.getElementById('updateSearchInput').value = '';
+            await fetchProducts(); 
         });
-        const data = await res.json();
-        if (data.success) {
-            document.getElementById('batchConfirmModal').style.display = 'none';
-            playSuccessSequence('updateResultContainer', 'Stock Augmented Safely!', async () => {
-                document.getElementById('updateSearchInput').value = '';
-                await fetchProducts(); 
-            });
-        } else { showToast("Error: " + data.error); }
-    } catch(err) { showToast("Network Error updating stock"); }
+    }
 }
 
 /* ==================================
@@ -448,25 +445,19 @@ async function loadCategoryDropdown() {
 async function handleCategorySubmit(e) {
     e.preventDefault();
     const name = document.getElementById('catName').value;
-    try {
-        const res = await fetch('/api/categories', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
-        });
-        const data = await res.json();
-        if(data.id) { showToast("Category Added"); document.getElementById('categoryForm').reset(); loadCategoryDropdown(); }
-    } catch(err) { showToast("Error"); }
+    const data = await fetchAPI('/api/categories', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+    });
+    if(data && data.id) { 
+        showToast("Category Added"); 
+        document.getElementById('categoryForm').reset(); 
+        loadCategoryDropdown(); 
+    }
 }
 
 async function handleProductSubmit(e) {
     e.preventDefault();
-    if(productsCache.length === 0) await fetchProducts();
-    const article = e.target.elements['article_no'].value.toLowerCase();
-    if(productsCache.some(p => p.article_no.toLowerCase() === article)) {
-        showToast("Error: Article number already exists! Use Update Stock instead.");
-        return;
-    }
-
     const formData = new FormData(e.target);
     const sizes = [];
     document.querySelectorAll('#sizesContainer > div').forEach(row => {
@@ -477,15 +468,11 @@ async function handleProductSubmit(e) {
     });
     formData.append('sizes_json', JSON.stringify(sizes));
 
-    try {
-        const res = await fetch('/api/products', { method: 'POST', body: formData });
-        const data = await res.json();
-        if(data.success) { 
-            showToast("Product Created Successfully!"); 
-            setTimeout(()=> { window.location.href='/overview'; }, 1000); 
-        }
-        else { showToast("Error: " + data.error); }
-    } catch(err) { showToast("Error saving product"); }
+    const data = await fetchAPI('/api/products', { method: 'POST', body: formData });
+    if(data && data.success) { 
+        showToast("Product Created Successfully!"); 
+        setTimeout(()=> { window.location.href='/overview'; }, 1000); 
+    }
 }
 
 /* ==================================
@@ -509,17 +496,8 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
 }
 
 async function loadAdvancedAnalytics() {
-    try {
-        console.log("FETCHING LIVE ANALYTICS...");
-        const res = await fetch('/api/sales_advanced');
-        const data = await res.json();
-        
-        if (data.error) {
-            console.error("DB CONNECTION ERROR:", data.error);
-            showToast("Database Error: " + data.error);
-            return;
-        }
-        console.log("LIVE DATA RECEIVED:", data);
+    const data = await fetchAPI('/api/sales_advanced');
+    if (!data) return;
         if(data.error) return;
 
         // 1. Daily
@@ -668,8 +646,7 @@ async function loadAdvancedAnalytics() {
             }
         });
 
-    } catch(err) { console.error("Error loading analytics:", err); }
-}
+    } 
 
 /* ==================================
    IMAGE LIGHTBOX LOGIC

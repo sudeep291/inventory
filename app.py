@@ -35,6 +35,19 @@ def load_cache_from_disk():
 
 load_cache_from_disk()
 
+# Professional Stability Helpers (Zero-Crash Vision)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def safe_float(val, default=0.0):
+    try: return float(val) if val else default
+    except: return default
+
+def safe_int(val, default=0):
+    try: return int(val) if val else default
+    except: return default
+
 # Custom JSON Encoder for Decimal support (Postgres compatibility)
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
@@ -244,11 +257,17 @@ def api_inventory():
 
 @app.route('/api/categories', methods=['POST'])
 def api_add_category():
-    name = request.json.get('name')
+    name = request.json.get('name', '').strip()
     if not name: return jsonify({"error": "Name required"}), 400
+    
     conn = get_db()
     cursor = conn.cursor()
     try:
+        # Category Guard: Prevent duplicates (case-insensitive)
+        cursor.execute("SELECT id FROM Categories WHERE LOWER(name) = LOWER(%s)", (name,))
+        if cursor.fetchone():
+            return jsonify({"error": f"Category '{name}' already exists!"}), 400
+            
         cursor.execute("INSERT INTO Categories (name) VALUES (%s) RETURNING id", (name,))
         new_row = cursor.fetchone()
         new_id = new_row['id']
@@ -278,10 +297,12 @@ def api_add_product():
     if cursor.fetchone():
         return jsonify({"error": "Article number already exists!"}), 400
         
-    mrp = float(mrp)
-    default_discount = float(default_discount)
+    mrp = safe_float(mrp)
+    default_discount = safe_float(default_discount)
     image_path = None
     if image and image.filename:
+        if not allowed_file(image.filename):
+            return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
         filename = secure_filename(image.filename)
         path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         image.save(path)
@@ -316,6 +337,9 @@ def api_update_product_image(id):
     image = request.files.get('image')
     if not image or not image.filename:
         return jsonify({"error": "No image provided"}), 400
+        
+    if not allowed_file(image.filename):
+        return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
         
     filename = secure_filename(image.filename)
     path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -366,20 +390,19 @@ def api_adjust_stock_batch():
     cursor = conn.cursor()
     try:
         for up in updates:
-            amount = int(up.get('amount', 0))
+            amount = safe_int(up.get('amount'))
             if amount <= 0: continue
             
             if up.get('is_new'):
                 product_id = up.get('product_id')
-                size = float(up.get('size'))
+                size = safe_float(up.get('size'))
                 
-                # Check for accidental duplicates
-                cursor.execute("SELECT id FROM ProductSizes WHERE product_id = %s AND size = %s", (product_id, size))
-                existing_size = cursor.fetchone()
-                if existing_size:
-                    cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, existing_size['id']))
-                else:
-                    cursor.execute("INSERT INTO ProductSizes (product_id, size, stock) VALUES (%s, %s, %s)", (product_id, size, amount))
+                # Atomic UPSERT Logic (Professional Integrity)
+                cursor.execute("""
+                    INSERT INTO ProductSizes (product_id, size, stock)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (product_id, size) DO UPDATE SET stock = ProductSizes.stock + EXCLUDED.stock
+                """, (product_id, size, amount))
             else:
                 size_id = up.get('size_id')
                 cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, size_id))
@@ -466,10 +489,10 @@ def get_consolidated_analytics():
             SELECT 
                 COALESCE(SUM(s.quantity), 0) as pairs_today,
                 COUNT(DISTINCT s.product_id) as unique_pairs_today,
-                COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_today,
-                COALESCE(SUM(CASE WHEN s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as gains_today,
-                COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0) as losses_today,
-                COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_today
+                ROUND(COALESCE(SUM(s.sold_price * s.quantity), 0), 2) as rev_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0), 2) as gains_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0), 2) as losses_today,
+                ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as net_surplus_today
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE DATE(s.sale_date) = CURRENT_DATE
         """)
@@ -486,8 +509,8 @@ def get_consolidated_analytics():
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(s.quantity), 0) as pairs_week,
-                COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_week,
-                COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_week
+                ROUND(COALESCE(SUM(s.sold_price * s.quantity), 0), 2) as rev_week,
+                ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as net_surplus_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE s.sale_date >= CURRENT_DATE - INTERVAL '6 days'
         """)
@@ -506,8 +529,8 @@ def get_consolidated_analytics():
         
         cursor.execute("""
             SELECT 
-                COALESCE(SUM(p.selling_price * ps.stock), 0) as total_investment,
-                COALESCE(SUM(p.mrp * ps.stock), 0) as potential_revenue,
+                ROUND(COALESCE(SUM(p.selling_price * ps.stock), 0), 2) as total_investment,
+                ROUND(COALESCE(SUM(p.mrp * ps.stock), 0), 2) as potential_revenue,
                 COUNT(DISTINCT p.id) as total_variants,
                 COALESCE(SUM(ps.stock), 0) as total_pairs
             FROM ProductSizes ps
@@ -541,8 +564,8 @@ def get_consolidated_analytics():
         cursor.execute("""
             SELECT p.article_no, p.name, 
                    SUM(s.quantity) AS total_qty, 
-                   SUM(s.sold_price * s.quantity) AS revenue, 
-                   SUM((s.sold_price - p.selling_price) * s.quantity) AS article_surplus
+                   ROUND(SUM(s.sold_price * s.quantity), 2) AS revenue, 
+                   ROUND(SUM((s.sold_price - p.selling_price) * s.quantity), 2) AS article_surplus
             FROM Sales s JOIN Products p ON s.product_id = p.id
             GROUP BY p.article_no, p.name
         """)
@@ -656,12 +679,12 @@ def record_weekly_snapshot():
         row = cursor.fetchone()
         total_pairs_sold = row['pairs'] if row and 'pairs' in row else 0
         
-        cursor.execute("SELECT COALESCE(SUM(sold_price * quantity), 0) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
+        cursor.execute("SELECT ROUND(COALESCE(SUM(sold_price * quantity), 0), 2) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_rev = row['rev'] if row and 'rev' in row else 0
         
         cursor.execute("""
-            SELECT COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as profit
+            SELECT ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as profit
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days' AND s.sale_date < CURRENT_DATE
         """)
@@ -672,7 +695,7 @@ def record_weekly_snapshot():
         row = cursor.fetchone()
         vault_stock = row['vault'] if row and 'vault' in row else 0
         
-        cursor.execute("SELECT COALESCE(SUM(p.selling_price * ps.stock), 0) as investment FROM ProductSizes ps JOIN Products p ON ps.product_id = p.id WHERE p.is_active = TRUE")
+        cursor.execute("SELECT ROUND(COALESCE(SUM(p.selling_price * ps.stock), 0), 2) as investment FROM ProductSizes ps JOIN Products p ON ps.product_id = p.id WHERE p.is_active = TRUE")
         row = cursor.fetchone()
         total_investment = row['investment'] if row and 'investment' in row else 0
         
