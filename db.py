@@ -103,6 +103,18 @@ def init_db():
             current_vault_stock INT DEFAULT 0,
             current_total_investment DECIMAL(15,2) DEFAULT 0.0
         )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_sales_date ON Sales(sale_date DESC);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_sales_product ON Sales(product_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_psizes_product ON ProductSizes(product_id);
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS idx_products_active ON Products(is_active);
         """
     ]
     

@@ -4,3 +4,4 @@ psycopg2-binary==2.9.9
 gunicorn==21.2.0
 Werkzeug==3.0.1
 APScheduler==3.10.4
+Flask-Compress==1.15

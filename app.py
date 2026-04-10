@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
+from flask_compress import Compress
 
 load_dotenv()
 
@@ -20,6 +21,7 @@ class CustomJSONProvider(DefaultJSONProvider):
 
 app = Flask(__name__)
 app.json = CustomJSONProvider(app)
+Compress(app) # Global professional compression for faster UI
 app.secret_key = os.environ.get('SECRET_KEY', 'default-dev-key')
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
 UPLOAD_FOLDER = os.path.join('static', 'images')
@@ -285,6 +287,17 @@ def api_update_product_image(id):
     conn = get_db()
     cursor = conn.cursor()
     try:
+        # Fetch old image path for cleanup (Server Stewardship)
+        cursor.execute("SELECT image_path FROM Products WHERE id = %s", (id,))
+        old_row = cursor.fetchone()
+        if old_row and old_row['image_path']:
+            old_full_path = os.path.join('static', old_row['image_path'])
+            if os.path.exists(old_full_path):
+                try: 
+                    os.remove(old_full_path)
+                    print(f"CLEANUP: Deleted old image {old_row['image_path']}")
+                except: pass
+        
         cursor.execute("UPDATE Products SET image_path = %s WHERE id = %s", (image_path, id))
         conn.commit()
         return jsonify({"success": True, "image_path": image_path})
@@ -377,9 +390,15 @@ def api_stock_adjust():
         if operation == 'subtract' and row['stock'] < amount:
             return jsonify({"error": "Not enough stock!"}), 400
             
-        new_stock = row['stock'] + amount if operation == 'add' else row['stock'] - amount
-        cursor.execute("UPDATE ProductSizes SET stock = %s WHERE id = %s", (new_stock, size_id))
-        
+        # Atomic Update (Professional Resilience)
+        if operation == 'subtract':
+            cursor.execute("UPDATE ProductSizes SET stock = stock - %s WHERE id = %s AND stock >= %s", (amount, size_id, amount))
+        else:
+            cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, size_id))
+            
+        if cursor.rowcount == 0:
+            return jsonify({"error": "Stock mismatch or not enough stock!"}), 400
+            
         if operation == 'subtract':
             cursor.execute("""
                 INSERT INTO Sales (product_id, size, quantity, sold_price, discount_applied)
@@ -387,7 +406,7 @@ def api_stock_adjust():
             """, (row['product_id'], row['size'], amount, float(sold_price) if sold_price else 0, float(discount_applied) if discount_applied else 0))
             
         conn.commit()
-        return jsonify({"success": True, "new_stock": new_stock})
+        return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
@@ -426,8 +445,7 @@ def api_sales_advanced():
                 COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_week,
                 COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
-            WHERE EXTRACT(WEEK FROM s.sale_date) = EXTRACT(WEEK FROM CURRENT_DATE) 
-              AND EXTRACT(YEAR FROM s.sale_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '6 days'
         """)
         wr = cursor.fetchone()
         
@@ -439,7 +457,7 @@ def api_sales_advanced():
         weekly = {
             "pairs": float(wr['pairs_week']), 
             "revenue": float(wr['rev_week']), 
-            "profit": float(wr['net_surplus_week']),
+            "profit": max(0, float(wr['net_surplus_week'])), # Clamped for Professional Vision
             "last_week_revenue": last_week_rev
         }
         
@@ -494,7 +512,7 @@ def api_sales_advanced():
                 "article_no": r['article_no'], 
                 "qty": r['total_qty'], 
                 "revenue": r['revenue'], 
-                "profit": r['article_surplus']
+                "profit": max(0, r['article_surplus']) # Consistent positive only
             } 
             for r in cursor.fetchall()
         ]
@@ -538,6 +556,7 @@ def api_sales_history():
         FROM Sales s
         JOIN Products p ON s.product_id = p.id
         ORDER BY s.sale_date DESC
+        LIMIT 200
     """)
     rows = cursor.fetchall()
     sales = []
