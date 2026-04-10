@@ -1,6 +1,7 @@
 import os
 import datetime
 import decimal
+import traceback
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
@@ -25,6 +26,13 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
+
+# Global Error Handler for Debugging Render Deployment
+@app.errorhandler(Exception)
+def handle_exception(e):
+    tb = traceback.format_exc()
+    print(tb)  # Will show in Render logs
+    return jsonify({"error": str(e), "traceback": tb}), 500
 
 @app.before_request
 def require_login():
