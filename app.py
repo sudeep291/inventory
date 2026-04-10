@@ -88,24 +88,24 @@ def api_stats():
     cursor = conn.cursor()
     
     # Total Products
-    cursor.execute("SELECT COUNT(*) FROM Products WHERE is_active=TRUE")
-    total_products = cursor.fetchone()[0]
+    cursor.execute("SELECT COUNT(*) AS total FROM Products WHERE is_active=TRUE")
+    total_products = cursor.fetchone()['total']
     
     # Total Current Stock (sum of all sizes of active products)
     cursor.execute("""
-        SELECT COALESCE(SUM(ps.stock), 0) FROM ProductSizes ps
+        SELECT COALESCE(SUM(ps.stock), 0) AS total_stock FROM ProductSizes ps
         JOIN Products p ON ps.product_id = p.id
         WHERE p.is_active=TRUE
     """)
-    total_stock = cursor.fetchone()[0]
+    total_stock = cursor.fetchone()['total_stock']
     
     # Low stock count
     cursor.execute("""
-        SELECT COUNT(*) FROM ProductSizes ps
+        SELECT COUNT(*) AS total FROM ProductSizes ps
         JOIN Products p ON ps.product_id = p.id
         WHERE p.is_active=TRUE AND ps.stock < 5
     """)
-    low_stock_alerts = cursor.fetchone()[0]
+    low_stock_alerts = cursor.fetchone()['total']
     
     # Best Selling Article (All time)
     cursor.execute("""
@@ -427,18 +427,18 @@ def api_sales_advanced():
         """)
         wr = cursor.fetchone()
         weekly = {
-            "pairs": wr['pairs_week'], 
+            "pairs": float(wr['pairs_week']), 
             "unique_pairs": wr['unique_pairs_week'], 
-            "revenue": wr['rev_week'], 
-            "profit": wr['gains_week'],
-            "surplus_loss": wr['losses_week']
+            "revenue": float(wr['rev_week']), 
+            "profit": float(wr['gains_week']),
+            "surplus_loss": float(wr['losses_week'])
         }     
         # Stock Analytics
-        cursor.execute("SELECT COUNT(*) FROM Products WHERE is_active=TRUE")
-        total_p = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) AS total FROM Products WHERE is_active=TRUE")
+        total_p = cursor.fetchone()['total']
         
-        cursor.execute("SELECT COALESCE(SUM(stock),0) FROM ProductSizes ps JOIN Products p ON ps.product_id=p.id WHERE p.is_active=TRUE")
-        total_s = cursor.fetchone()[0]
+        cursor.execute("SELECT COALESCE(SUM(stock),0) AS total FROM ProductSizes ps JOIN Products p ON ps.product_id=p.id WHERE p.is_active=TRUE")
+        total_s = cursor.fetchone()['total']
         
         cursor.execute("""
             SELECT p.name, p.article_no, ps.size, ps.stock 
