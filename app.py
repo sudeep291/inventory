@@ -1,13 +1,23 @@
 import os
 import datetime
+import decimal
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
 from db import get_db_connection, init_db
 
 load_dotenv()
 
+# Custom JSON Encoder for Decimal support (Postgres compatibility)
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, obj):
+        if isinstance(obj, decimal.Decimal):
+            return float(obj)
+        return super().default(obj)
+
 app = Flask(__name__)
+app.json = CustomJSONProvider(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'default-dev-key')
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
 UPLOAD_FOLDER = os.path.join('static', 'images')
@@ -107,7 +117,7 @@ def api_stats():
         LIMIT 1
     """)
     best = cursor.fetchone()
-    best_seller = f"{best[0]} ({best[1]})" if best else "No sales yet"
+    best_seller = f"{best['name']} ({best['article_no']})" if best else "No sales yet"
     
     conn.close()
     return jsonify({
@@ -124,7 +134,7 @@ def api_inventory():
     cursor = conn.cursor()
     
     cursor.execute("SELECT id, name FROM Categories")
-    categories = [{"id": row[0], "name": row[1]} for row in cursor.fetchall()]
+    categories = [{"id": row['id'], "name": row['name']} for row in cursor.fetchall()]
     
     query = """
     SELECT p.id, p.name, p.article_no, p.category_id, c.name as category_name, p.gender, p.image_path, p.mrp, p.default_discount, p.selling_price
@@ -137,21 +147,21 @@ def api_inventory():
     product_map = {}
     for row in cursor.fetchall():
         p = {
-            "id": row[0],
-            "name": row[1],
-            "article_no": row[2],
-            "category_id": row[3],
-            "category_name": row[4],
-            "gender": row[5],
-            "image_path": row[6],
-            "mrp": float(row[7]) if row[7] else 0,
-            "default_discount": float(row[8]) if row[8] else 0,
-            "selling_price": float(row[9]) if row[9] else 0,
+            "id": row['id'],
+            "name": row['name'],
+            "article_no": row['article_no'],
+            "category_id": row['category_id'],
+            "category_name": row['category_name'],
+            "gender": row['gender'],
+            "image_path": row['image_path'],
+            "mrp": row['mrp'],
+            "default_discount": row['default_discount'],
+            "selling_price": row['selling_price'],
             "total_stock": 0,
             "sizes": []
         }
         products.append(p)
-        product_map[row[0]] = p
+        product_map[row['id']] = p
         
     cursor.execute("""
         SELECT ps.id, ps.product_id, ps.size, ps.stock 
@@ -160,11 +170,12 @@ def api_inventory():
         WHERE p.is_active = TRUE
     """)
     for row in cursor.fetchall():
-        if row[1] in product_map:
-            product_map[row[1]]['sizes'].append({
-                "id": row[0], "product_id": row[1], "size": float(row[2]), "stock": row[3]
+        pid = row['product_id']
+        if pid in product_map:
+            product_map[pid]['sizes'].append({
+                "id": row['id'], "product_id": pid, "size": row['size'], "stock": row['stock']
             })
-            product_map[row[1]]['total_stock'] += row[3]
+            product_map[pid]['total_stock'] += row['stock']
             
     for p in products:
         p['sizes'] = sorted(p['sizes'], key=lambda x: x['size'])
@@ -180,7 +191,8 @@ def api_add_category():
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO Categories (name) VALUES (%s) RETURNING id", (name,))
-        new_id = cursor.fetchone()[0]
+        new_row = cursor.fetchone()
+        new_id = new_row['id']
         conn.commit()
         return jsonify({"id": new_id, "name": name})
     except Exception as e:
@@ -229,10 +241,11 @@ def api_add_product():
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, TRUE)
             RETURNING id
         """, (name, article_no, category_id, gender, image_path, mrp, default_discount, selling_price))
-        product_id = cursor.fetchone()[0]
+        new_p = cursor.fetchone()
+        product_id = new_p['id']
         
         for sObj in sizes_data:
-            cursor.execute("INSERT INTO ProductSizes (product_id, size, stock) VALUES (?, ?, ?)", 
+            cursor.execute("INSERT INTO ProductSizes (product_id, size, stock) VALUES (%s, %s, %s)", 
                            (product_id, float(sObj['size']), int(sObj['stock'])))
             
         conn.commit()
@@ -303,7 +316,7 @@ def api_adjust_stock_batch():
                 cursor.execute("SELECT id FROM ProductSizes WHERE product_id = %s AND size = %s", (product_id, size))
                 existing_size = cursor.fetchone()
                 if existing_size:
-                    cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, existing_size[0]))
+                    cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, existing_size['id']))
                 else:
                     cursor.execute("INSERT INTO ProductSizes (product_id, size, stock) VALUES (%s, %s, %s)", (product_id, size, amount))
             else:
@@ -354,17 +367,17 @@ def api_stock_adjust():
         row = cursor.fetchone()
         if not row: return jsonify({"error": "Size not found"}), 404
             
-        if operation == 'subtract' and row[2] < amount:
+        if operation == 'subtract' and row['stock'] < amount:
             return jsonify({"error": "Not enough stock!"}), 400
             
-        new_stock = row[2] + amount if operation == 'add' else row[2] - amount
+        new_stock = row['stock'] + amount if operation == 'add' else row['stock'] - amount
         cursor.execute("UPDATE ProductSizes SET stock = %s WHERE id = %s", (new_stock, size_id))
         
         if operation == 'subtract':
             cursor.execute("""
                 INSERT INTO Sales (product_id, size, quantity, sold_price, discount_applied)
                 VALUES (%s, %s, %s, %s, %s)
-            """, (row[0], row[1], amount, float(sold_price) if sold_price else 0, float(discount_applied) if discount_applied else 0))
+            """, (row['product_id'], row['size'], amount, float(sold_price) if sold_price else 0, float(discount_applied) if discount_applied else 0))
             
         conn.commit()
         return jsonify({"success": True, "new_stock": new_stock})
@@ -393,11 +406,11 @@ def api_sales_advanced():
         """)
         dr = cursor.fetchone()
         daily = {
-            "pairs": dr[0], 
-            "unique_pairs": dr[1], 
-            "revenue": float(dr[2]), 
-            "profit": float(dr[3]),
-            "surplus_loss": float(dr[4])
+            "pairs": dr['pairs_today'], 
+            "unique_pairs": dr['unique_pairs_today'], 
+            "revenue": dr['rev_today'], 
+            "profit": dr['gains_today'],
+            "surplus_loss": dr['losses_today']
         }
         
         # Weekly Analytics (Postgres style EXTRACT)
@@ -414,11 +427,11 @@ def api_sales_advanced():
         """)
         wr = cursor.fetchone()
         weekly = {
-            "pairs": wr[0], 
-            "unique_pairs": wr[1], 
-            "revenue": float(wr[2]), 
-            "profit": float(wr[3]),
-            "surplus_loss": float(wr[4])
+            "pairs": wr['pairs_week'], 
+            "unique_pairs": wr['unique_pairs_week'], 
+            "revenue": wr['rev_week'], 
+            "profit": wr['gains_week'],
+            "surplus_loss": wr['losses_week']
         }     
         # Stock Analytics
         cursor.execute("SELECT COUNT(*) FROM Products WHERE is_active=TRUE")
@@ -432,7 +445,7 @@ def api_sales_advanced():
             FROM ProductSizes ps JOIN Products p ON ps.product_id = p.id 
             WHERE p.is_active=TRUE AND ps.stock < 5
         """)
-        low_stock = [{"name": r[0], "article": r[1], "size": float(r[2]), "stock": r[3]} for r in cursor.fetchall()]
+        low_stock = [{"name": r['name'], "article": r['article_no'], "size": r['size'], "stock": r['stock']} for r in cursor.fetchall()]
 
         cursor.execute("""
             SELECT p.article_no, p.name, COALESCE(SUM(ps.stock),0) as total_stock
@@ -441,7 +454,7 @@ def api_sales_advanced():
             GROUP BY p.article_no, p.name
             ORDER BY total_stock DESC
         """)
-        all_stock = [{"article": r[0], "name": r[1], "stock": r[2]} for r in cursor.fetchall()]
+        all_stock = [{"article": r['article_no'], "name": r['name'], "stock": r['total_stock']} for r in cursor.fetchall()]
         
         # Article-Based Analytics
         cursor.execute("""
@@ -455,10 +468,10 @@ def api_sales_advanced():
         """)
         article_profit = [
             {
-                "article_no": r[0], 
-                "qty": r[1], 
-                "revenue": float(r[2]) if r[2] else 0, 
-                "profit": float(r[4]) if r[4] is not None else 0
+                "article_no": r['article_no'], 
+                "qty": r['total_qty'], 
+                "revenue": r['revenue'], 
+                "profit": r['avg_discount']
             } 
             for r in cursor.fetchall()
         ]
@@ -507,12 +520,12 @@ def api_sales_history():
     sales = []
     for r in rows:
         sales.append({
-            "id": r[0], "date": r[1].isoformat() if r[1] else "",
-            "article": r[2], "name": r[3],
-            "size": float(r[4]), "qty": r[5],
-            "mrp": float(r[6]) if r[6] is not None else 0,
-            "sold_price": float(r[7]) if r[7] is not None else 0,
-            "discount": float(r[8]) if r[8] is not None else 0
+            "id": r['id'], "date": r['sale_date'].isoformat() if r['sale_date'] else "",
+            "article": r['article_no'], "name": r['name'],
+            "size": r['size'], "qty": r['quantity'],
+            "mrp": r['mrp'],
+            "sold_price": r['sold_price'],
+            "discount": r['discount_applied']
         })
     conn.close()
     return jsonify(sales)

@@ -1,7 +1,6 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
-from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,13 +11,12 @@ def get_db_connection():
         print("DATABASE_URL not found in environment variables.")
         return None
         
-    # Standardize the URL (Render sometimes gives postgres:// but psycopg2 prefers postgresql:// in some environments)
     if database_url.startswith("postgres://"):
         database_url = database_url.replace("postgres://", "postgresql://", 1)
 
     try:
-        # Connect to the PostgreSQL database with SSL required for Render
-        conn = psycopg2.connect(database_url, sslmode='require')
+        # Use RealDictCursor to access results by column name
+        conn = psycopg2.connect(database_url, sslmode='require', cursor_factory=RealDictCursor)
         return conn
     except Exception as e:
         print(f"DATABASE CONNECTION ERROR: {e}")

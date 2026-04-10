@@ -51,10 +51,10 @@ async function loadWelcomeDashboard() {
         if(data.error) return;
 
         document.getElementById('dashCards').innerHTML = `
-            <div class="summary-card"><h4>Total Products</h4><span class="val">${data.total_products}</span></div>
-            <div class="summary-card"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></div>
-            <div class="summary-card"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></div>
-            <div class="summary-card"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></div>
+            <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Products</h4><span class="val">${data.total_products}</span></a>
+            <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></a>
+            <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></a>
+            <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></a>
         `;
         
         const resSales = await fetch('/api/sales_advanced');
