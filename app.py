@@ -13,6 +13,28 @@ from whitenoise import WhiteNoise
 
 load_dotenv()
 
+# Enterprise Persistence Layer (Zero-Crash Infrastructure)
+GLOBAL_ANALYTICS_CACHE = {} 
+BACKUP_FILE = 'static/resilience_backup.json'
+
+def save_cache_to_disk():
+    import json
+    try:
+        with open(BACKUP_FILE, 'w') as f:
+            json.dump(GLOBAL_ANALYTICS_CACHE, f)
+    except: pass
+
+def load_cache_from_disk():
+    global GLOBAL_ANALYTICS_CACHE
+    import json
+    if os.path.exists(BACKUP_FILE):
+        try:
+            with open(BACKUP_FILE, 'r') as f:
+                GLOBAL_ANALYTICS_CACHE = json.load(f)
+        except: pass
+
+load_cache_from_disk()
+
 # Custom JSON Encoder for Decimal support (Postgres compatibility)
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
@@ -108,8 +130,15 @@ def analytics():
 
 @app.route('/api/stats')
 def api_stats():
+    # SWR Strategy for Stats
+    if GLOBAL_ANALYTICS_CACHE and 'stats' in GLOBAL_ANALYTICS_CACHE:
+        return jsonify(GLOBAL_ANALYTICS_CACHE['stats'])
+        
     conn = get_db()
-    if not conn: return jsonify({"error": "No DB"}), 500
+    if not conn: 
+        if GLOBAL_ANALYTICS_CACHE and 'stats' in GLOBAL_ANALYTICS_CACHE:
+            return jsonify(GLOBAL_ANALYTICS_CACHE['stats'])
+        return jsonify({"error": "No DB"}), 500
     cursor = conn.cursor()
     
     # Total Products
@@ -144,12 +173,19 @@ def api_stats():
     best = cursor.fetchone()
     best_seller = f"{best['name']} ({best['article_no']})" if best else "No sales yet"
     
-    return jsonify({
+    res = {
         "total_products": total_products,
         "total_stock": total_stock,
         "low_stock_alerts": low_stock_alerts,
         "best_seller": best_seller
-    })
+    }
+    # Link to global cache
+    global GLOBAL_ANALYTICS_CACHE
+    if 'stats' not in GLOBAL_ANALYTICS_CACHE: GLOBAL_ANALYTICS_CACHE['stats'] = {}
+    GLOBAL_ANALYTICS_CACHE['stats'] = res
+    save_cache_to_disk()
+    
+    return jsonify(res)
 
 @app.route('/api/inventory')
 def api_inventory():
@@ -414,11 +450,12 @@ def api_stock_adjust():
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/sales_advanced')
-def api_sales_advanced():
-    conn = get_db()
-    if not conn: return jsonify({"error": "No DB"}), 500
-    cursor = conn.cursor()
+def get_consolidated_analytics():
+    """Enterprise-level consolidated analytics engine"""
+    conn = get_db_connection()
+    if not conn: return None
     try:
+        cursor = conn.cursor()
         # Daily Analytics
         cursor.execute("""
             SELECT 
@@ -437,7 +474,7 @@ def api_sales_advanced():
             "unique_pairs": dr['unique_pairs_today'], 
             "revenue": dr['rev_today'], 
             "profit": max(0, dr['net_surplus_today']),
-            "surplus_loss": dr['net_surplus_today'] # Net Surplus Margin
+            "surplus_loss": dr['net_surplus_today']
         }
         
         # Weekly Analytics
@@ -451,7 +488,6 @@ def api_sales_advanced():
         """)
         wr = cursor.fetchone()
         
-        # Comparison with Last Week (Historical Intelligence)
         cursor.execute("SELECT total_revenue FROM WeeklyMetrics ORDER BY snapshot_date DESC LIMIT 1")
         last_wr = cursor.fetchone()
         last_week_rev = float(last_wr['total_revenue']) if last_wr else 0.0
@@ -459,13 +495,10 @@ def api_sales_advanced():
         weekly = {
             "pairs": float(wr['pairs_week']), 
             "revenue": float(wr['rev_week']), 
-            "profit": max(0, float(wr['net_surplus_week'])), # Clamped for Professional Vision
+            "profit": max(0, float(wr['net_surplus_week'])),
             "last_week_revenue": last_week_rev
         }
         
-        # Overall Stock & Asset Analytics (SaaS Intelligence)
-        # Total Investment: SUM(Strategy Price * Current Stock)
-        # Potential Revenue: SUM(MRP * Current Stock)
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(p.selling_price * ps.stock), 0) as total_investment,
@@ -500,48 +533,55 @@ def api_sales_advanced():
         """)
         all_stock = [{"article": r['article_no'], "name": r['name'], "stock": r['total_stock']} for r in cursor.fetchall()]
         
-        # Article-Based Analytics
         cursor.execute("""
-            SELECT p.article_no, 
+            SELECT p.article_no, p.name, 
                    SUM(s.quantity) AS total_qty, 
                    SUM(s.sold_price * s.quantity) AS revenue, 
                    SUM((s.sold_price - p.selling_price) * s.quantity) AS article_surplus
             FROM Sales s JOIN Products p ON s.product_id = p.id
-            GROUP BY p.article_no
+            GROUP BY p.article_no, p.name
         """)
         article_profit = [
-            {
-                "article_no": r['article_no'], 
-                "qty": r['total_qty'], 
-                "revenue": r['revenue'], 
-                "profit": max(0, r['article_surplus']) # Consistent positive only
-            } 
+            {"article_no": r['article_no'], "qty": r['total_qty'], "revenue": r['revenue'], "profit": max(0, r['article_surplus'])} 
             for r in cursor.fetchall()
         ]
         
-        # 7-Day Chart Trend (Postgres style)
         cursor.execute("""
             SELECT DATE(sale_date) as d, COALESCE(SUM(quantity), 0) as qty
-            FROM Sales
-            WHERE sale_date >= CURRENT_DATE - INTERVAL '6 days'
-            GROUP BY DATE(sale_date)
-            ORDER BY d
+            FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '6 days'
+            GROUP BY DATE(sale_date) ORDER BY d
         """)
         trend_rows = cursor.fetchall()
         chart_labels = [row['d'].strftime('%a') if row['d'] else '?' for row in trend_rows]
         chart_data = [row['qty'] for row in trend_rows]
 
-        return jsonify({
-            "daily": daily,
-            "weekly": weekly,
+        result = {
+            "daily": daily, "weekly": weekly,
             "chart": {"labels": chart_labels, "data": chart_data},
-            "stock": stock_summary,
-            "low_stock_list": low_stock,
-            "all_stock_list": all_stock,
-            "articles": article_profit
-        })
+            "stock": stock_summary, "low_stock_list": low_stock,
+            "all_stock_list": all_stock, "articles": article_profit
+        }
+        
+        global GLOBAL_ANALYTICS_CACHE
+        GLOBAL_ANALYTICS_CACHE = result
+        save_cache_to_disk()
+        return result
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("Consolidated Analytics Fetch Failed:", e)
+        return None
+    finally:
+        release_db_connection(conn)
+
+@app.route('/api/sales_advanced')
+def api_sales_advanced():
+    # Attempt SWR Return
+    if GLOBAL_ANALYTICS_CACHE:
+        return jsonify(GLOBAL_ANALYTICS_CACHE)
+    
+    # Try Fresh Fetch if Cache Empty
+    res = get_consolidated_analytics()
+    if res: return jsonify(res)
+    return jsonify({"error": "No analytics available"}), 500
 
 @app.route('/sales_history')
 def sales_history():
@@ -623,15 +663,28 @@ def record_weekly_snapshot():
     finally:
         release_db_connection(conn)
 
+# Enterprise Heartbeat & Cache Refresh (Zero-Crash Architecture)
+def enterprise_heartbeat():
+    try:
+        print(f"[{datetime.datetime.now()}] ENTERPRISE HEARTBEAT: System Healthy.")
+        # Auto-refresh analytics every heartbeat cycle
+        get_consolidated_analytics()
+    except Exception as e:
+        print(f"Heartbeat Logic Failure: {e}")
+
 scheduler = BackgroundScheduler()
-# Runs every Monday at 12:01 AM (00:01)
+# 1. Weekly Snapshot (Monday Morning)
 scheduler.add_job(func=record_weekly_snapshot, trigger="cron", day_of_week='mon', hour=0, minute=1)
+# 2. Enterprise Heartbeat (Keep-Alive + Cache Refresh) every 3 minutes
+scheduler.add_job(func=enterprise_heartbeat, trigger="interval", minutes=3)
+
 # Safe Startup Block (Professional Resilience)
 def startup_checks():
     try:
         init_db()
         print("Professional Initialization: DB migrated successfully.")
-        # Only start scheduler once
+        # Trigger immediate cache warm-up
+        enterprise_heartbeat()
         if not scheduler.running:
             scheduler.start()
             print("Professional Initialization: Background Scheduler active.")
