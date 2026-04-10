@@ -6,7 +6,8 @@ import traceback
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
-from db import get_db_connection, init_db
+from db import get_db_connection, init_db, release_db_connection
+from apscheduler.schedulers.background import BackgroundScheduler
 
 load_dotenv()
 
@@ -44,7 +45,7 @@ def get_db():
 def close_db(e=None):
     db = g.pop('db', None)
     if db is not None:
-        db.close()
+        release_db_connection(db)
 
 @app.before_request
 def require_login():
@@ -414,7 +415,7 @@ def api_sales_advanced():
             "pairs": dr['pairs_today'], 
             "unique_pairs": dr['unique_pairs_today'], 
             "revenue": dr['rev_today'], 
-            "profit": dr['net_surplus_today'],
+            "profit": max(0, dr['net_surplus_today']),
             "surplus_loss": dr['net_surplus_today'] # Net Surplus Margin
         }
         
@@ -543,6 +544,60 @@ def api_sales_history():
             "discount": r['discount_applied']
         })
     return jsonify(sales)
+
+# ==========================================
+# BACKGROUND SCHEDULER (WEEKLY METRICS)
+# ==========================================
+def record_weekly_snapshot():
+    conn = get_db_connection()
+    if not conn:
+        print("Scheduler: DB connection failed.")
+        return
+        
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as pairs FROM Sales")
+        row = cursor.fetchone()
+        total_pairs_sold = row['pairs'] if row and 'pairs' in row else 0
+        
+        cursor.execute("SELECT COALESCE(SUM(sold_price * quantity), 0) as rev FROM Sales")
+        row = cursor.fetchone()
+        total_rev = row['rev'] if row and 'rev' in row else 0
+        
+        cursor.execute("""
+            SELECT COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as profit
+            FROM Sales s JOIN Products p ON s.product_id = p.id
+        """)
+        row = cursor.fetchone()
+        net_prof = row['profit'] if row and 'profit' in row else 0
+        
+        cursor.execute("SELECT COALESCE(SUM(stock), 0) as vault FROM ProductSizes ps JOIN Products p ON ps.product_id = p.id WHERE p.is_active = TRUE")
+        row = cursor.fetchone()
+        vault_stock = row['vault'] if row and 'vault' in row else 0
+        
+        cursor.execute("SELECT COALESCE(SUM(p.selling_price * ps.stock), 0) as investment FROM ProductSizes ps JOIN Products p ON ps.product_id = p.id WHERE p.is_active = TRUE")
+        row = cursor.fetchone()
+        total_investment = row['investment'] if row and 'investment' in row else 0
+        
+        cursor.execute("""
+            INSERT INTO WeeklyMetrics (total_pairs_sold, total_revenue, net_profit, current_vault_stock, current_total_investment)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (total_pairs_sold, total_rev, net_prof, vault_stock, total_investment))
+        
+        conn.commit()
+        print(f"[{datetime.datetime.now()}] WEEKLY METRICS SAVED: {total_pairs_sold} pairs, Revenue: {total_rev}, Profit: {net_prof}")
+        
+    except Exception as e:
+        print("SCHEDULER LOGIC ERROR:", e)
+        conn.rollback()
+    finally:
+        release_db_connection(conn)
+
+scheduler = BackgroundScheduler()
+# Runs every Monday at 12:01 AM (00:01)
+scheduler.add_job(func=record_weekly_snapshot, trigger="cron", day_of_week='mon', hour=0, minute=1)
+scheduler.start()
 
 # Initialize DB tables before starting
 init_db()

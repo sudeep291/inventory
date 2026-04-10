@@ -82,7 +82,7 @@
         <div id="sellResultContainer" style="display:none; padding-top:2rem; border-top:1px solid rgba(255,255,255,0.1)">
             <div class="premium-result-card">
                 <div class="img-hover-container premium-img-border" onclick="openLightbox(document.getElementById('sellResImg').src)">
-                    <img id="sellResImg" src="" alt="Product" style="width:100%; height:100%; object-fit:cover;">
+                    <img id="sellResImg" src="" alt="Product" style="width:100%; height:100%; object-fit:cover;" loading="lazy" onload="optimizeImage(this)">
                     <div class="img-hover-btn">🔍 PREVIEW</div>
                 </div>
                 <div class="result-info">

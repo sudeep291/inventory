@@ -93,8 +93,8 @@ async function loadOverviewTable() {
         let imageSectionHTML = '';
         if (p.image_path) {
             imageSectionHTML = `
-            <div style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border);" onmouseenter="this.querySelector('.upload-overlay').style.opacity='1'; this.querySelector('.delete-img-btn').style.opacity='1'" onmouseleave="this.querySelector('.upload-overlay').style.opacity='0'; this.querySelector('.delete-img-btn').style.opacity='0'" onclick="triggerImageUpload(${p.id})">
-                <img class="prod-img" id="img-${p.id}" src="/static/${p.image_path}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <div class="shimmer" style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border);" onmouseenter="this.querySelector('.upload-overlay').style.opacity='1'; this.querySelector('.delete-img-btn').style.opacity='1'" onmouseleave="this.querySelector('.upload-overlay').style.opacity='0'; this.querySelector('.delete-img-btn').style.opacity='0'" onclick="triggerImageUpload(${p.id})">
+                <img class="prod-img lazy-img" data-src="/static/${p.image_path}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                 
                 <div id="fallback-${p.id}" style="display:none; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary);">
                     <span style="font-size:3rem; margin-bottom:0.5rem;">📁</span>
@@ -668,9 +668,42 @@ function closeLightbox() {
     document.body.style.overflow = ''; // Unlock scroll
 }
 
+
+/* ==================================
+   IMAGE OPTIMIZATION ENGINE
+======================== */
+const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            const img = entry.target;
+            const src = img.getAttribute('data-src');
+            if (src) {
+                img.src = src;
+                img.removeAttribute('data-src');
+                img.onload = () => img.classList.add('img-loaded');
+            }
+            observer.unobserve(img);
+        }
+    });
+}, { rootMargin: '100px 0px', threshold: 0.01 });
+
+function optimizeImage(img) {
+    if (!img) return;
+    img.onload = () => img.classList.add('img-loaded');
+    // If image is already complete (cached)
+    if (img.complete) img.classList.add('img-loaded');
+}
+
+// Re-initialize optimized loading on static pages
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('img[loading="lazy"]').forEach(img => {
+        optimizeImage(img);
+    });
+});
+
 /* ==================================
    MOBILE PWA & UI LOGIC
-================================== */
+======================== */
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/static/sw.js').then(reg => {

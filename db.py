@@ -1,26 +1,48 @@
 import os
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2 import pool
 from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_db_connection():
-    database_url = os.environ.get('DATABASE_URL')
-    if not database_url:
-        print("DATABASE_URL not found in environment variables.")
-        return None
-        
-    if database_url.startswith("postgres://"):
-        database_url = database_url.replace("postgres://", "postgresql://", 1)
+# Global Connection Pool
+_db_pool = None
 
-    try:
-        # Use RealDictCursor to access results by column name
-        conn = psycopg2.connect(database_url, sslmode='require', cursor_factory=RealDictCursor)
-        return conn
-    except Exception as e:
-        print(f"DATABASE CONNECTION ERROR: {e}")
-        return None
+def get_connection_pool():
+    global _db_pool
+    if _db_pool is None:
+        database_url = os.environ.get('DATABASE_URL')
+        if not database_url:
+            print("DATABASE_URL not found in environment variables.")
+            return None
+            
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        try:
+            # Min 1, Max 20 connections
+            _db_pool = pool.ThreadedConnectionPool(1, 20, database_url, sslmode='require', cursor_factory=RealDictCursor)
+            print("DATABASE POOL: Initialized successfully.")
+        except Exception as e:
+            print(f"DATABASE POOL ERROR: {e}")
+            return None
+    return _db_pool
+
+def get_db_connection():
+    pool = get_connection_pool()
+    if pool:
+        try:
+            conn = pool.getconn()
+            return conn
+        except Exception as e:
+            print(f"FAILED TO GET CONNECTION FROM POOL: {e}")
+            return None
+    return None
+
+def release_db_connection(conn):
+    pool = get_connection_pool()
+    if pool and conn:
+        pool.putconn(conn)
 
 def init_db():
     conn = get_db_connection()
@@ -69,20 +91,33 @@ def init_db():
             sold_price DECIMAL(10,2) NULL,
             discount_applied DECIMAL(5,2) NULL
         )
+        """,
+        """
+        CREATE TABLE IF NOT EXISTS WeeklyMetrics (
+            id SERIAL PRIMARY KEY,
+            snapshot_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            total_pairs_sold INT DEFAULT 0,
+            total_revenue DECIMAL(15,2) DEFAULT 0.0,
+            net_profit DECIMAL(15,2) DEFAULT 0.0,
+            current_vault_stock INT DEFAULT 0,
+            current_total_investment DECIMAL(15,2) DEFAULT 0.0
+        )
         """
     ]
     
     try:
+        cursor = conn.cursor(cursor_factory=RealDictCursor)
+        
         for t in tables:
             cursor.execute(t)
         conn.commit()
         print("DATABASE SUCCESS: Tables initialized correctly.")
     except Exception as e:
         print(f"DATABASE INIT ERROR: {e}")
-        conn.rollback()
+        if conn: conn.rollback()
     finally:
-        cursor.close()
-        conn.close()
+        if 'cursor' in locals() and cursor: cursor.close()
+        if conn: release_db_connection(conn)
 
 if __name__ == '__main__':
     init_db()
