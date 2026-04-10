@@ -1,9 +1,8 @@
-const CACHE_NAME = 'sv-footwear-v1';
+const CACHE_NAME = 'sv-footwear-v2'; // Bump to v2 to force update
 const ASSETS_TO_CACHE = [
   '/',
   '/static/css/style.css',
-  '/static/js/main.js',
-  '/static/images/logo.png'
+  '/static/js/main.js'
 ];
 
 self.addEventListener('install', (event) => {
@@ -12,12 +11,36 @@ self.addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+  // Network-First Strategy for accuracy
+  if (event.request.mode === 'navigate' || event.request.url.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => caches.match(event.request))
+    );
+  } else {
+    // Cache-First for static assets (CSS/JS)
+    event.respondWith(
+      caches.match(event.request).then((response) => {
+        return response || fetch(event.request);
+      })
+    );
+  }
 });
