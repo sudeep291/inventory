@@ -481,15 +481,15 @@ def api_sales_advanced():
         
         # 7-Day Chart Trend (Postgres style)
         cursor.execute("""
-            SELECT DATE(sale_date) as d, COALESCE(SUM(quantity), 0)
+            SELECT DATE(sale_date) as d, COALESCE(SUM(quantity), 0) as qty
             FROM Sales
             WHERE sale_date >= CURRENT_DATE - INTERVAL '6 days'
             GROUP BY DATE(sale_date)
             ORDER BY d
         """)
         trend_rows = cursor.fetchall()
-        chart_labels = [row[0].strftime('%a') if row[0] else '?' for row in trend_rows]
-        chart_data = [row[1] for row in trend_rows]
+        chart_labels = [row['d'].strftime('%a') if row['d'] else '?' for row in trend_rows]
+        chart_data = [row['qty'] for row in trend_rows]
 
         return jsonify({
             "daily": daily,
