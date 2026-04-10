@@ -444,6 +444,11 @@ def api_stock_adjust():
             """, (row['product_id'], row['size'], amount, float(sold_price) if sold_price else 0, float(discount_applied) if discount_applied else 0))
             
         conn.commit()
+        # Intelligent Cache Invalidation: Refresh history & analytics on sale (Enterprise Tier)
+        import threading
+        if 'enterprise_heartbeat' in globals():
+            threading.Thread(target=enterprise_heartbeat, daemon=True).start()
+            
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
@@ -587,31 +592,53 @@ def api_sales_advanced():
 def sales_history():
     return render_template('sales_history.html', active_page='sales_history')
 
+def get_consolidated_history():
+    """Enterprise-level consolidated history engine"""
+    conn = get_db_connection()
+    if not conn: return None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT s.id, s.sale_date, p.article_no, p.name, s.size, s.quantity, 
+                   p.mrp, s.sold_price, s.discount_applied
+            FROM Sales s
+            JOIN Products p ON s.product_id = p.id
+            ORDER BY s.sale_date DESC
+            LIMIT 200
+        """)
+        rows = cursor.fetchall()
+        sales = []
+        for r in rows:
+            sales.append({
+                "id": r['id'], "date": r['sale_date'].isoformat() if r['sale_date'] else "",
+                "article": r['article_no'], "name": r['name'],
+                "size": r['size'], "qty": r['quantity'],
+                "mrp": r['mrp'], "sold_price": r['sold_price'],
+                "discount": r['discount_applied']
+            })
+        
+        # Integrate into global cache
+        global GLOBAL_ANALYTICS_CACHE
+        if 'history' not in GLOBAL_ANALYTICS_CACHE: GLOBAL_ANALYTICS_CACHE['history'] = []
+        GLOBAL_ANALYTICS_CACHE['history'] = sales
+        save_cache_to_disk()
+        return sales
+    except Exception as e:
+        print("Consolidated History Fetch Failed:", e)
+        return None
+    finally:
+        release_db_connection(conn)
+
 @app.route('/api/sales_history')
 def api_sales_history():
-    conn = get_db()
-    if not conn: return jsonify({"error": "No DB"}), 500
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT s.id, s.sale_date, p.article_no, p.name, s.size, s.quantity, 
-               p.mrp, s.sold_price, s.discount_applied
-        FROM Sales s
-        JOIN Products p ON s.product_id = p.id
-        ORDER BY s.sale_date DESC
-        LIMIT 200
-    """)
-    rows = cursor.fetchall()
-    sales = []
-    for r in rows:
-        sales.append({
-            "id": r['id'], "date": r['sale_date'].isoformat() if r['sale_date'] else "",
-            "article": r['article_no'], "name": r['name'],
-            "size": r['size'], "qty": r['quantity'],
-            "mrp": r['mrp'],
-            "sold_price": r['sold_price'],
-            "discount": r['discount_applied']
-        })
-    return jsonify(sales)
+    # Attempt SWR Return
+    if GLOBAL_ANALYTICS_CACHE and 'history' in GLOBAL_ANALYTICS_CACHE:
+        return jsonify(GLOBAL_ANALYTICS_CACHE['history'])
+    
+    # Try Fresh Fetch if Cache Empty
+    res = get_consolidated_history()
+    if res: return jsonify(res)
+    return jsonify([])
 
 # ==========================================
 # BACKGROUND SCHEDULER (WEEKLY METRICS)
@@ -667,8 +694,9 @@ def record_weekly_snapshot():
 def enterprise_heartbeat():
     try:
         print(f"[{datetime.datetime.now()}] ENTERPRISE HEARTBEAT: System Healthy.")
-        # Auto-refresh analytics every heartbeat cycle
+        # Auto-refresh analytics & history every heartbeat cycle
         get_consolidated_analytics()
+        get_consolidated_history()
     except Exception as e:
         print(f"Heartbeat Logic Failure: {e}")
 
