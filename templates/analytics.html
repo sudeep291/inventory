@@ -7,7 +7,13 @@
 .analytics-section { padding: 4rem 2rem; }
 .metric-val { font-size: 2.5rem; font-weight: 800; letter-spacing:-1px; margin-top:0.5rem; display:block;}
 .analytic-title { font-size:2rem; font-weight:700; margin-bottom:2rem; text-align:center; color:white; text-shadow:0 2px 4px rgba(0,0,0,0.1) }
-.glass-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px,1fr)); gap:1.5rem; max-width:1200px; margin:0 auto;}
+.glass-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px,1fr)); gap:1.5rem; max-width:1200px; margin:0 auto;}
+@media (max-width: 480px) {
+    .hero-section { padding: 4rem 1.5rem; }
+    .analytics-section { padding: 2rem 1rem; }
+    .metric-val { font-size: 2rem; }
+    .analytic-title { font-size: 1.5rem; }
+}
 /* Floating bg shift */
 @keyframes bgShift { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
 .bg-animate { background-size: 200% 200%; animation: bgShift 10s ease infinite; }
@@ -38,6 +44,10 @@
             <a href="/analytics" class="glass-card" style="text-decoration:none">
                 <h4 style="text-transform:uppercase; font-size:0.8rem; letter-spacing:1px; color:#9ca3af;">Weekly Revenue</h4>
                 <div class="metric-val" id="ovRevenue">₹0</div>
+                <div id="compareRevenue" class="badge-compare flat">
+                    <span id="compareIcon">●</span>
+                    <span id="compareText">Vs. Last Week: ₹0</span>
+                </div>
             </a>
             <a href="/overview" class="glass-card" style="text-decoration:none">
                 <h4 style="text-transform:uppercase; font-size:0.8rem; letter-spacing:1px; color:#9ca3af;">Total Vault Stock</h4>

@@ -781,3 +781,31 @@ body.dark-theme .bottom-nav {
     align-items: center;
     justify-content: center;
 }
+/* =====================
+   INTELLIGENCE BADGES
+======================== */
+.badge-compare {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.1);
+}
+.badge-compare.up { color: #4ade80; }
+.badge-compare.down { color: #fb7185; }
+.badge-compare.flat { color: #94a3b8; }
+
+.vision-windows { display: block; }
+.vision-android { display: none; }
+
+@media (max-width: 768px) {
+    .vision-windows { display: none; }
+    .vision-android { display: block; }
+    
+    .dashboard-layout { padding: 1.5rem 1rem; }
+    .hero-section { padding: 2rem 1.5rem; }
+}

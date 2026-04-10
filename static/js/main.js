@@ -551,6 +551,30 @@ async function loadAdvancedAnalytics() {
         animateValue(document.getElementById('ovRevenue'), 0, data.weekly.revenue, 1500, true);
         animateValue(document.getElementById('ovStock'), 0, data.stock.total_stock, 1500);
 
+        // Comparison Intelligence Logic
+        const compRevEl = document.getElementById('compareRevenue');
+        if (compRevEl && data.weekly.last_week_revenue !== undefined) {
+            const current = data.weekly.revenue;
+            const last = data.weekly.last_week_revenue;
+            const diff = current - last;
+            const icon = document.getElementById('compareIcon');
+            const text = document.getElementById('compareText');
+            
+            if (last === 0) {
+                compRevEl.className = 'badge-compare flat';
+                icon.innerHTML = '●';
+                text.innerHTML = `New Week Started`;
+            } else if (diff >= 0) {
+                compRevEl.className = 'badge-compare up';
+                icon.innerHTML = '↑';
+                text.innerHTML = `+₹${toMoney(diff)} vs Last Week`;
+            } else {
+                compRevEl.className = 'badge-compare down';
+                icon.innerHTML = '↓';
+                text.innerHTML = `-₹${toMoney(Math.abs(diff))} vs Last Week`;
+            }
+        }
+
         // Matrix
         animateValue(document.getElementById('plProf'), 0, tProf, 1200, true);
         animateValue(document.getElementById('plLoss'), 0, tLoss, 1200, true);

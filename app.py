@@ -430,10 +430,17 @@ def api_sales_advanced():
               AND EXTRACT(YEAR FROM s.sale_date) = EXTRACT(YEAR FROM CURRENT_DATE)
         """)
         wr = cursor.fetchone()
+        
+        # Comparison with Last Week (Historical Intelligence)
+        cursor.execute("SELECT total_revenue FROM WeeklyMetrics ORDER BY snapshot_date DESC LIMIT 1")
+        last_wr = cursor.fetchone()
+        last_week_rev = float(last_wr['total_revenue']) if last_wr else 0.0
+        
         weekly = {
             "pairs": float(wr['pairs_week']), 
             "revenue": float(wr['rev_week']), 
-            "profit": float(wr['net_surplus_week'])
+            "profit": float(wr['net_surplus_week']),
+            "last_week_revenue": last_week_rev
         }
         
         # Overall Stock & Asset Analytics (SaaS Intelligence)
