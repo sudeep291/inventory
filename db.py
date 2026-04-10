@@ -1,6 +1,7 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -11,17 +12,22 @@ def get_db_connection():
         print("DATABASE_URL not found in environment variables.")
         return None
         
+    # Standardize the URL (Render sometimes gives postgres:// but psycopg2 prefers postgresql:// in some environments)
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
     try:
-        # Connect to the PostgreSQL database
-        conn = psycopg2.connect(database_url)
+        # Connect to the PostgreSQL database with SSL required for Render
+        conn = psycopg2.connect(database_url, sslmode='require')
         return conn
     except Exception as e:
-        print(f"Database connection error: {e}")
+        print(f"DATABASE CONNECTION ERROR: {e}")
         return None
 
 def init_db():
     conn = get_db_connection()
     if not conn:
+        print("Failed to initialize database: No connection.")
         return
         
     cursor = conn.cursor()
@@ -72,9 +78,9 @@ def init_db():
         for t in tables:
             cursor.execute(t)
         conn.commit()
-        print("Database tables initialized successfully.")
+        print("DATABASE SUCCESS: Tables initialized correctly.")
     except Exception as e:
-        print(f"Error initializing DB tables: {e}")
+        print(f"DATABASE INIT ERROR: {e}")
         conn.rollback()
     finally:
         cursor.close()
