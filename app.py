@@ -78,14 +78,14 @@ def api_stats():
     cursor = conn.cursor()
     
     # Total Products
-    cursor.execute("SELECT COUNT(*) FROM Products WHERE is_active=1")
+    cursor.execute("SELECT COUNT(*) FROM Products WHERE is_active=TRUE")
     total_products = cursor.fetchone()[0]
     
     # Total Current Stock (sum of all sizes of active products)
     cursor.execute("""
-        SELECT ISNULL(SUM(ps.stock), 0) FROM ProductSizes ps
+        SELECT COALESCE(SUM(ps.stock), 0) FROM ProductSizes ps
         JOIN Products p ON ps.product_id = p.id
-        WHERE p.is_active=1
+        WHERE p.is_active=TRUE
     """)
     total_stock = cursor.fetchone()[0]
     
@@ -93,7 +93,7 @@ def api_stats():
     cursor.execute("""
         SELECT COUNT(*) FROM ProductSizes ps
         JOIN Products p ON ps.product_id = p.id
-        WHERE p.is_active=1 AND ps.stock < 5
+        WHERE p.is_active=TRUE AND ps.stock < 5
     """)
     low_stock_alerts = cursor.fetchone()[0]
     
