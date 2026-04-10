@@ -510,8 +510,16 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
 
 async function loadAdvancedAnalytics() {
     try {
+        console.log("FETCHING LIVE ANALYTICS...");
         const res = await fetch('/api/sales_advanced');
         const data = await res.json();
+        
+        if (data.error) {
+            console.error("DB CONNECTION ERROR:", data.error);
+            showToast("Database Error: " + data.error);
+            return;
+        }
+        console.log("LIVE DATA RECEIVED:", data);
         if(data.error) return;
 
         // 1. Daily
@@ -527,7 +535,6 @@ async function loadAdvancedAnalytics() {
 
         // 2. Weekly
         animateValue(document.getElementById('wSold'), 0, data.weekly.pairs, 1000);
-        animateValue(document.getElementById('wRev'), 0, data.weekly.revenue, 1000, true);
         animateValue(document.getElementById('wProf'), 0, data.weekly.profit, 1000, true);
 
         // Calculate Overall for Hero & Profit Matrix
@@ -539,23 +546,23 @@ async function loadAdvancedAnalytics() {
             if(r.profit < 0) tLoss += Math.abs(r.profit);
         });
 
-        // Hero
+        // Hero (The "Accurate SaaS Equations")
         animateValue(document.getElementById('ovSales'), 0, tPairs, 1500);
-        animateValue(document.getElementById('ovRevenue'), 0, tRev, 1500, true);
+        animateValue(document.getElementById('ovRevenue'), 0, data.stock.potential_revenue, 1500, true);
         animateValue(document.getElementById('ovStock'), 0, data.stock.total_stock, 1500);
 
         // Matrix
         animateValue(document.getElementById('plProf'), 0, tProf, 1200, true);
         animateValue(document.getElementById('plLoss'), 0, tLoss, 1200, true);
 
-        // Stock
+        // Stock Status
         animateValue(document.getElementById('sCurr'), 0, data.stock.total_stock, 1000);
-        animateValue(document.getElementById('sAlert'), 0, data.stock.low_stock.length, 1000);
+        animateValue(document.getElementById('sAlert'), 0, data.low_stock_list.length, 1000);
 
         // Progress Bars Render
         let stockHTML = '';
-        data.stock.all_stock.forEach(item => {
-            const width = Math.min((item.stock / 20) * 100, 100); // 20 units is considered 100% capacity for scaling visualization
+        data.all_stock_list.forEach(item => {
+            const width = Math.min((item.stock / 20) * 100, 100); 
             const color = item.stock < 5 ? '#ef4444' : (item.stock < 10 ? '#f59e0b' : '#22c55e');
             stockHTML += `
                 <div style="margin-bottom:0.5rem;">

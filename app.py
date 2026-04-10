@@ -422,7 +422,6 @@ def api_sales_advanced():
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(s.quantity), 0) as pairs_week,
-                COUNT(DISTINCT s.product_id) as unique_pairs_week,
                 COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_week,
                 COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
@@ -432,17 +431,30 @@ def api_sales_advanced():
         wr = cursor.fetchone()
         weekly = {
             "pairs": float(wr['pairs_week']), 
-            "unique_pairs": wr['unique_pairs_week'], 
             "revenue": float(wr['rev_week']), 
             "profit": float(wr['net_surplus_week'])
         }
-     
-        # Stock Analytics
-        cursor.execute("SELECT COUNT(*) AS total FROM Products WHERE is_active=TRUE")
-        total_p = cursor.fetchone()['total']
         
-        cursor.execute("SELECT COALESCE(SUM(stock),0) AS total FROM ProductSizes ps JOIN Products p ON ps.product_id=p.id WHERE p.is_active=TRUE")
-        total_s = cursor.fetchone()['total']
+        # Overall Stock & Asset Analytics (SaaS Intelligence)
+        # Total Investment: SUM(Strategy Price * Current Stock)
+        # Potential Revenue: SUM(MRP * Current Stock)
+        cursor.execute("""
+            SELECT 
+                COALESCE(SUM(p.selling_price * ps.stock), 0) as total_investment,
+                COALESCE(SUM(p.mrp * ps.stock), 0) as potential_revenue,
+                COUNT(DISTINCT p.id) as total_variants,
+                COALESCE(SUM(ps.stock), 0) as total_pairs
+            FROM ProductSizes ps
+            JOIN Products p ON ps.product_id = p.id
+            WHERE p.is_active = TRUE
+        """)
+        sr = cursor.fetchone()
+        stock_summary = {
+            "total_products": sr['total_variants'],
+            "total_stock": sr['total_pairs'],
+            "total_investment": sr['total_investment'],
+            "potential_revenue": sr['potential_revenue']
+        }
         
         cursor.execute("""
             SELECT p.name, p.article_no, ps.size, ps.stock 
@@ -495,7 +507,9 @@ def api_sales_advanced():
             "daily": daily,
             "weekly": weekly,
             "chart": {"labels": chart_labels, "data": chart_data},
-            "stock": {"total_products": total_p, "total_stock": total_s, "low_stock": low_stock, "all_stock": all_stock},
+            "stock": stock_summary,
+            "low_stock_list": low_stock,
+            "all_stock_list": all_stock,
             "articles": article_profit
         })
     except Exception as e:
