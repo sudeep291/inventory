@@ -589,7 +589,9 @@ async function loadAdvancedAnalytics() {
                         <span class="rank-badge ${badgeClass}">${idx+1}</span>
                         <div style="display:flex; flex-direction:column;">
                             <strong style="color:#78350f; font-size:0.9rem;">${r.article_no}</strong>
-                            <span style="color:#92400e; font-size:0.75rem;">Avg Discount: ${parseFloat(r.profit).toFixed(2)}%</span>
+                            <span class="${r.profit >= 0 ? 'text-profit' : 'text-loss'}" style="font-size:0.75rem; font-weight:700;">
+                                ${r.profit >= 0 ? '+' : ''}${toMoney(r.profit)}
+                            </span>
                         </div>
                     </div>
                     <strong style="color:#92400e; font-size:1rem;">${r.qty} pairs</strong>

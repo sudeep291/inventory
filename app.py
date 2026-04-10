@@ -403,8 +403,9 @@ def api_sales_advanced():
                 COALESCE(SUM(s.quantity), 0) as pairs_today,
                 COUNT(DISTINCT s.product_id) as unique_pairs_today,
                 COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_today,
-                COALESCE(SUM(CASE WHEN s.sold_price >= p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as gains_today,
-                COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as losses_today
+                COALESCE(SUM(CASE WHEN s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as gains_today,
+                COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0) as losses_today,
+                COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_today
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE DATE(s.sale_date) = CURRENT_DATE
         """)
@@ -413,18 +414,17 @@ def api_sales_advanced():
             "pairs": dr['pairs_today'], 
             "unique_pairs": dr['unique_pairs_today'], 
             "revenue": dr['rev_today'], 
-            "profit": dr['gains_today'],
-            "surplus_loss": dr['losses_today']
+            "profit": dr['net_surplus_today'],
+            "surplus_loss": dr['net_surplus_today'] # Net Surplus Margin
         }
         
-        # Weekly Analytics (Postgres style EXTRACT)
+        # Weekly Analytics
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(s.quantity), 0) as pairs_week,
                 COUNT(DISTINCT s.product_id) as unique_pairs_week,
                 COALESCE(SUM(s.sold_price * s.quantity), 0) as rev_week,
-                COALESCE(SUM(CASE WHEN s.sold_price >= p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as gains_week,
-                COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0) as losses_week
+                COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0) as net_surplus_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE EXTRACT(WEEK FROM s.sale_date) = EXTRACT(WEEK FROM CURRENT_DATE) 
               AND EXTRACT(YEAR FROM s.sale_date) = EXTRACT(YEAR FROM CURRENT_DATE)
@@ -434,9 +434,9 @@ def api_sales_advanced():
             "pairs": float(wr['pairs_week']), 
             "unique_pairs": wr['unique_pairs_week'], 
             "revenue": float(wr['rev_week']), 
-            "profit": float(wr['gains_week']),
-            "surplus_loss": float(wr['losses_week'])
-        }     
+            "profit": float(wr['net_surplus_week'])
+        }
+     
         # Stock Analytics
         cursor.execute("SELECT COUNT(*) AS total FROM Products WHERE is_active=TRUE")
         total_p = cursor.fetchone()['total']
@@ -464,9 +464,8 @@ def api_sales_advanced():
         cursor.execute("""
             SELECT p.article_no, 
                    SUM(s.quantity) AS total_qty, 
-                   SUM(p.mrp * s.quantity) AS total_mrp, 
                    SUM(s.sold_price * s.quantity) AS revenue, 
-                   AVG(s.discount_applied) AS avg_discount
+                   SUM((s.sold_price - p.selling_price) * s.quantity) AS article_surplus
             FROM Sales s JOIN Products p ON s.product_id = p.id
             GROUP BY p.article_no
         """)
@@ -475,7 +474,7 @@ def api_sales_advanced():
                 "article_no": r['article_no'], 
                 "qty": r['total_qty'], 
                 "revenue": r['revenue'], 
-                "profit": r['avg_discount']
+                "profit": r['article_surplus']
             } 
             for r in cursor.fetchall()
         ]
