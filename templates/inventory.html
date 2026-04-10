@@ -1,0 +1,140 @@
+{% extends 'layout.html' %}
+{% block content %}
+<style>
+    body {
+        background: url('/static/images/bg_sell_product.png') no-repeat center center fixed !important;
+        background-size: cover !important;
+    }
+    .form-container {
+        background: rgba(15, 23, 42, 0.6) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+    .form-container h2, .form-container p, .form-container label, .form-container h3, .form-container strong {
+        color: #ffffff !important;
+    }
+    .form-container .result-card {
+        background: rgba(0,0,0,0.2) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    body[data-theme='dark'] .form-container {
+        background: rgba(15, 23, 42, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    /* Premium High-Contrast Luminous Overrides */
+    .premium-result-card h3 { 
+        font-size: 2.25rem !important; 
+        font-weight: 800 !important; 
+        margin-bottom: 0.75rem !important; 
+    }
+    .premium-result-card p { 
+        font-size: 1.3rem !important; 
+        color: #475569 !important;
+        margin-bottom: 0.75rem !important; 
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px dashed #e2e8f0;
+        padding-bottom: 0.5rem;
+    }
+    .premium-result-card .val {
+        font-weight: 800 !important;
+    }
+    .premium-result-card label {
+        font-size: 1rem !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 1.5rem;
+        display: block;
+        font-weight: 800 !important;
+    }
+    .lbl-input { color: #312e81 !important; margin-bottom: 0.5rem !important; } /* Deep Indigo */
+    
+    /* Specific overrides to prevent global white text from washing out labels */
+    .premium-result-card h3, .text-brand-primary { color: #dc2626 !important; } /* Red Product Name */
+    .premium-result-card strong { color: #111827 !important; font-weight: 800 !important; } /* Deep Black Size/UK */
+    
+    .exec-size-item { 
+        background: #ffffff !important; 
+        color: #111827 !important; 
+        border: 2px solid #e2e8f0 !important;
+        font-weight: 800 !important; 
+    }
+    .exec-size-item:hover {
+        border-color: #dc2626 !important;
+        background: #fef2f2 !important;
+    }
+</style>
+<main class="dashboard-layout animate-fade-up">
+    <div class="form-container">
+        <h2 style="margin-bottom:1rem">Execute Sale</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem;">Search to find item and process sale.</p>
+        
+        <div class="search-section" style="text-align:left; margin-bottom:2rem;">
+            <label style="font-weight:600;display:block;margin-bottom:0.5rem">Search Article No.</label>
+            <div style="display:flex; gap:1rem;">
+                <input type="text" id="sellSearchInput" placeholder="ex. ART-101" style="flex:1;">
+                <button type="button" class="btn primary" onclick="searchSellProduct()">Search Item</button>
+            </div>
+        </div>
+
+        <div id="sellResultContainer" style="display:none; padding-top:2rem; border-top:1px solid rgba(255,255,255,0.1)">
+            <div class="premium-result-card">
+                <div class="img-hover-container premium-img-border" onclick="openLightbox(document.getElementById('sellResImg').src)">
+                    <img id="sellResImg" src="" alt="Product" style="width:100%; height:100%; object-fit:cover;">
+                    <div class="img-hover-btn">🔍 PREVIEW</div>
+                </div>
+                <div class="result-info">
+                    <h3 id="sellResName" class="text-brand-primary"></h3>
+                    
+                    <p class="text-brand-mrp">
+                        <span class="text-brand-label lbl-mrp">Target MRP:</span>
+                        <span class="val">₹<span id="sellResMRP"></span></span>
+                    </p>
+                    
+                    <p class="text-brand-strategy">
+                        <span class="text-brand-label lbl-strategy">Base Strategy:</span>
+                        <span class="val"><span id="sellResBaseDisc"></span>% OFF</span>
+                    </p>
+                    
+                    <p class="text-brand-success">
+                        <span class="text-brand-label lbl-sold">Target Sold:</span>
+                        <span class="val">₹<span id="sellResSold"></span></span>
+                    </p>
+                    
+                    <label class="text-brand-label lbl-input" style="margin-top:2rem;">Select Size to Buy</label>
+                    <div id="sellResSizes" class="exec-size-list"></div>
+                </div>
+            </div>
+            
+            <form id="executeSaleForm" style="display:none; background:var(--bg-base); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border); margin-top:2rem; animation:fadeUp 0.5s ease forwards;">
+                <h3 style="margin-bottom:1.5rem; border-bottom:1px solid var(--border); padding-bottom:1rem; font-size:1.1rem; color:var(--text-primary)">Checkout Configuration</h3>
+                <input type="hidden" id="sale_size_id">
+                
+                <div class="form-group">
+                    <label>Quantity Sold</label>
+                    <input type="number" id="sale_qty" min="1" value="1" required oninput="calcSalePreview()">
+                </div>
+                
+                <div class="form-group">
+                    <label>Item Sold For (₹)</label>
+                    <input type="number" step="0.01" id="sale_sp" required oninput="calcSaleFromPrice()" style="background:#f1f5f9; color:#0f172a; font-weight:700; border:2px solid #3b82f6;">
+                    <input type="hidden" id="sale_discount">
+                </div>
+                
+                <div id="liveProfitCalc" style="background:var(--bg-white); padding:1rem; border-radius:8px; text-align:center; margin-bottom:1.5rem; border:1px solid var(--border); transition:all 0.3s">
+                    <span id="salePreviewVal" style="font-size:1.1rem; font-weight:700">Waiting for setup...</span>
+                </div>
+                
+                <button type="submit" class="btn primary full-width" style="padding:1.15rem; font-size:1.1rem; border-radius:12px; box-shadow:0 10px 20px rgba(59,130,246,0.3)">Complete Sale</button>
+            </form>
+        </div>
+    </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.getElementById('executeSaleForm').addEventListener('submit', handleSaleSubmit);
+</script>
+{% endblock %}

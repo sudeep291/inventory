@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sri Vijayalakshmi Footwear</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+</head>
+<body class="theme-{{ active_page }}">
+    <header class="app-header">
+        <div class="header-left">
+            <h1>Sri Vijayalakshmi Footwear</h1>
+            <p>Efficient. Smart. Reliable inventory control.</p>
+        </div>
+        <nav class="header-right">
+            <a href="/" class="btn outline {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            <a href="/overview" class="btn outline {% if active_page == 'overview' %}active{% endif %}">Overview</a>
+            <a href="/add_product" class="btn outline {% if active_page == 'add' %}active{% endif %}">Add</a>
+            <a href="/inventory" class="btn outline {% if active_page == 'sell' %}active{% endif %}">Sell</a>
+            <a href="/update_stock" class="btn outline {% if active_page == 'update' %}active{% endif %}">Update</a>
+            <a href="/sales_history" class="btn outline {% if active_page == 'sales_history' %}active{% endif %}">History</a>
+            <a href="/analytics" class="btn outline {% if active_page == 'analytics' %}active{% endif %}">Analytics</a>
+            <a href="/logout" class="btn outline" style="color:var(--loss); font-weight:700;">Logout</a>
+            
+            <button class="btn outline" onclick="toggleTheme()" style="padding:0.4rem; display:flex; align-items:center; justify-content:center; border-radius:50%; width:34px; height:34px; margin-left:0.5rem; background:rgba(255,255,255,0.05);" title="Toggle Theme">
+                <svg id="themeIcon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>
+            </button>
+        </nav>
+    </header>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="bottom-nav">
+        <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span>Home</span>
+        </a>
+        <a href="/inventory" class="nav-item {% if active_page == 'sell' %}active{% endif %}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5L8 12v10h2V12l3-3zM18 5V2h-2v3h-3v2h3v3h2V7h3V5h-3z"/></svg>
+            <span>Sell</span>
+        </a>
+        <a href="/overview" class="nav-item {% if active_page == 'overview' %}active{% endif %}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
+            <span>Overview</span>
+        </a>
+        <a href="/sales_history" class="nav-item {% if active_page == 'sales_history' %}active{% endif %}">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+            <span>History</span>
+        </a>
+        <a href="javascript:void(0)" class="nav-item" onclick="toggleMobileMenu()">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            <span>More</span>
+        </a>
+    </nav>
+
+    <!-- Mobile More Menu Overlay -->
+    <div id="mobileMenu" class="mobile-menu-overlay" onclick="toggleMobileMenu()">
+        <div class="mobile-menu-content" onclick="event.stopPropagation()">
+            <div class="menu-header">Quick Actions</div>
+            <a href="/update_stock" class="menu-link {% if active_page == 'update' %}active{% endif %}">Update Stock</a>
+            <a href="/analytics" class="menu-link {% if active_page == 'analytics' %}active{% endif %}">Business Stats</a>
+            <a href="/add_product" class="menu-link {% if active_page == 'add' %}active{% endif %}">Add Product</a>
+            <a href="/logout" class="menu-link" style="color:var(--loss)">Logout System</a>
+            <button class="btn primary" onclick="toggleMobileMenu()" style="width:100%; margin-top:1.5rem;">Close</button>
+        </div>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <div id="toast" class="toast">Action Successful</div>
+    
+    <!-- Image Lightbox Overlay -->
+    <div id="imageLightbox" class="lightbox-overlay" onclick="closeLightbox()">
+        <img id="lightboxContent" class="lightbox-img" src="">
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        // Global Theme Engine
+        function toggleTheme() {
+            document.body.classList.toggle('dark-theme');
+            const isDark = document.body.classList.contains('dark-theme');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+
+        // Initialize Theme Sequence
+        if (localStorage.getItem('theme') === 'dark') {
+            document.body.classList.add('dark-theme');
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

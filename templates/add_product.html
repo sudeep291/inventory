@@ -1,0 +1,191 @@
+{% extends 'layout.html' %}
+{% block content %}
+<main class="dashboard-layout responsive-flex-stack">
+    
+    <div class="form-container main-form">
+        <h2 style="margin-bottom:1.5rem">Create New Product</h2>
+        <form id="productForm" enctype="multipart/form-data">
+            <div class="form-group"><label>Product Name</label><input type="text" name="name" required></div>
+            <div class="form-group"><label>Article No.</label><input type="text" name="article_no" required></div>
+            <div class="form-group">
+                <label>Category</label>
+                <select name="category_id" id="categorySelect" required><option value="">Select Category</option></select>
+            </div>
+
+            <div class="form-group">
+                <label>MRP (₹)</label>
+                <input type="number" step="0.01" name="mrp" placeholder="Maximum Retail Price" required>
+            </div>
+            <div class="form-group">
+                <label>Default Seasonal Discount Strategy (%)</label>
+                <div style="display:flex; align-items:center; gap:0.5rem">
+                    <input type="number" step="0.1" name="default_discount" placeholder="e.g. 15" required style="width:100%">
+                </div>
+                <p style="color:var(--text-secondary); font-size:0.8rem; margin-top:0.25rem">Set based on season (e.g. 10% normal, 30% clearance).</p>
+            </div>
+            <div class="form-group">
+                <label>Inventory Sizes & Initial Stock</label>
+                <div id="sizesContainer">
+                    <div style="display:flex; gap:1rem; margin-bottom:0.5rem">
+                        <input type="number" class="size-val" placeholder="Size (UK) e.g. 8" required style="flex:1">
+                        <input type="number" class="stock-val" placeholder="Init Stock Qty" required style="flex:1" min="0">
+                    </div>
+                </div>
+                <button type="button" class="btn outline" onclick="addSizeRow()" style="margin-top:0.5rem; font-size:0.75rem">+ Add Another Size</button>
+            </div>
+
+            <div class="form-group">
+                <label>Product Image</label>
+                <style>
+                    .upload-btn-choice {
+                        flex:1; border: 2px dashed var(--border); padding: 1.5rem; transition: all 0.2s ease;
+                        color: var(--text-primary); background: transparent; border-radius: 8px; cursor: pointer;
+                    }
+                    .upload-btn-choice:hover {
+                        border-color: var(--primary);
+                        background: rgba(59,130,246,0.05);
+                        color: var(--primary);
+                    }
+                    #webcamModal {
+                        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                        background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center; flex-direction: column;
+                    }
+                </style>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <button type="button" class="upload-btn-choice" onclick="triggerFileUpload()">
+                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">📁</span>
+                        Upload File
+                    </button>
+                    <button type="button" class="upload-btn-choice" onclick="openWebcam()">
+                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">📸</span>
+                        Take Photo
+                    </button>
+                </div>
+                <input type="file" name="image" id="productImage" accept="image/*" style="display:none;" onchange="previewImage(this)">
+                
+                <div id="imagePreviewContainer" style="margin-top: 1rem; display: none; text-align: center;">
+                    <img id="imagePreview" src="" alt="Preview" style="max-height: 200px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 0.5rem;">
+                    <div>
+                        <button type="button" class="btn outline" style="color:var(--danger); border-color:var(--danger); padding:0.5rem 1rem; font-size:0.8rem;" onclick="clearImage()">Remove Photo</button>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn primary full-width" style="margin-top:1rem; padding:1rem; font-size:1.1rem;">Save New Product</button>
+        </form>
+    </div>
+
+    <div class="form-container side-form">
+        <h2 style="margin-bottom:1.5rem">Manage Categories</h2>
+        <form id="categoryForm">
+            <div class="form-group"><label>Category Name</label><input type="text" id="catName" required></div>
+            <button type="submit" class="btn outline full-width" style="border-color:var(--primary); color:var(--primary)">Add Category</button>
+        </form>
+    </div>
+
+    <!-- Webcam Modal -->
+    <div id="webcamModal">
+        <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; max-width: 90vw;">
+            <h3 style="margin-bottom: 1rem;">Take a Photo</h3>
+            <video id="webcamVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 8px; background: #000; margin-bottom: 1rem;"></video>
+            <canvas id="webcamCanvas" style="display:none;"></canvas>
+            <div style="display:flex; gap: 1rem; justify-content: center;">
+                <button type="button" class="btn outline" onclick="closeWebcam()">Cancel</button>
+                <button type="button" class="btn primary" onclick="snapPhoto()">📸 Snap Photo</button>
+            </div>
+        </div>
+    </div>
+
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        loadCategoryDropdown();
+        document.getElementById('categoryForm').addEventListener('submit', handleCategorySubmit);
+        document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
+    });
+
+    function addSizeRow() {
+        const cont = document.getElementById('sizesContainer');
+        const row = document.createElement('div');
+        row.style.display = 'flex'; row.style.gap = '1rem'; row.style.marginBottom = '0.5rem';
+        row.innerHTML = `
+            <input type="number" class="size-val" placeholder="Size (UK)" required style="flex:1">
+            <input type="number" class="stock-val" placeholder="Init Stock Qty" required style="flex:1" min="0">
+            <button type="button" class="btn danger" onclick="this.parentElement.remove()">X</button>
+        `;
+        cont.appendChild(row);
+    }
+
+    function triggerFileUpload() {
+        document.getElementById('productImage').click();
+    }
+
+    let stream = null;
+    
+    async function openWebcam() {
+        const modal = document.getElementById('webcamModal');
+        const video = document.getElementById('webcamVideo');
+        modal.style.display = 'flex';
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = stream;
+        } catch (err) {
+            alert('Camera access denied or unavailabe.');
+            closeWebcam();
+        }
+    }
+
+    function closeWebcam() {
+        document.getElementById('webcamModal').style.display = 'none';
+        if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+            stream = null;
+        }
+    }
+
+    function snapPhoto() {
+        const video = document.getElementById('webcamVideo');
+        const canvas = document.getElementById('webcamCanvas');
+        if (!stream) return;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        
+        // Convert to file
+        let arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
+        let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+        let file = new File([u8arr], "webcam_photo.jpg", {type:mime});
+        
+        let container = new DataTransfer();
+        container.items.add(file);
+        const fileInput = document.getElementById('productImage');
+        fileInput.files = container.files;
+        
+        previewImage(fileInput);
+        closeWebcam();
+    }
+
+    function previewImage(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                document.getElementById('imagePreview').src = e.target.result;
+                document.getElementById('imagePreviewContainer').style.display = 'block';
+            }
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function clearImage() {
+        document.getElementById('productImage').value = '';
+        document.getElementById('imagePreviewContainer').style.display = 'none';
+        document.getElementById('imagePreview').src = '';
+    }
+</script>
+{% endblock %}

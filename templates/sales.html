@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Analytics - SRIVijayalakshmi</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header class="app-header">
+        <div class="header-left">
+            <h1>Sales Dashboard</h1>
+            <p>Advanced Profit & Loss Intelligence</p>
+        </div>
+        <div class="header-right">
+            <a href="/" class="btn outline">← Back to Inventory</a>
+        </div>
+    </header>
+
+    <main class="dashboard-layout" style="display:block">
+        
+        <div class="summary-cards" id="summaryCards">
+            <!-- JS Populated -->
+        </div>
+
+        <div class="table-container">
+            <div class="section-title" style="padding:1.5rem; margin-bottom:0;">
+                <h2>Grouped Profit/Loss by Article</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Article No</th>
+                        <th>Tot. Qty Sold</th>
+                        <th>Total Revenue (₹)</th>
+                        <th>Total Cost (₹)</th>
+                        <th>Profit/Loss (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="articleTableBody"></tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <div class="section-title" style="padding:1.5rem; margin-bottom:0;">
+                <h2>Today's Transactions</h2>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Article No</th>
+                        <th>Product Name</th>
+                        <th>Size</th>
+                        <th>Qty Sold</th>
+                        <th>Cost Price (₹)</th>
+                        <th>Sold Price (₹)</th>
+                        <th>Profit/Loss (₹)</th>
+                    </tr>
+                </thead>
+                <tbody id="dailyTableBody"></tbody>
+            </table>
+        </div>
+
+    </main>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadSalesDashboard);
+    </script>
+</body>
+</html>

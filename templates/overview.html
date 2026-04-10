@@ -1,0 +1,17 @@
+{% extends 'layout.html' %}
+{% block content %}
+<main class="dashboard-layout animate-fade-up">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
+        <h2>Complete Inventory Grid</h2>
+    </div>
+    
+    <div class="products-grid" id="overviewGrid">
+        <!-- Rendered cleanly via core JS -->
+    </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', loadOverviewTable);
+</script>
+{% endblock %}
