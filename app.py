@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_compress import Compress
+from whitenoise import WhiteNoise
 
 load_dotenv()
 
@@ -22,6 +23,7 @@ class CustomJSONProvider(DefaultJSONProvider):
 app = Flask(__name__)
 app.json = CustomJSONProvider(app)
 Compress(app) # Global professional compression for faster UI
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') # Professional asset delivery
 app.secret_key = os.environ.get('SECRET_KEY', 'default-dev-key')
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
 UPLOAD_FOLDER = os.path.join('static', 'images')

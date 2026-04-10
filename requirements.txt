@@ -5,3 +5,4 @@ gunicorn==21.2.0
 Werkzeug==3.0.1
 APScheduler==3.10.4
 Flask-Compress==1.15
+whitenoise==6.6.0
