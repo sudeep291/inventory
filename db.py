@@ -30,14 +30,18 @@ def get_connection_pool():
     return _db_pool
 
 def get_db_connection():
+    import time
     pool = get_connection_pool()
     if pool:
-        try:
-            conn = pool.getconn()
-            return conn
-        except Exception as e:
-            print(f"FAILED TO GET CONNECTION FROM POOL: {e}")
-            return None
+        for attempt in range(3): # Professional retry loop for cold-boot resilience
+            try:
+                conn = pool.getconn()
+                return conn
+            except Exception as e:
+                print(f"POOL ATTEMPT {attempt+1} FAILED: {e}")
+                time.sleep(1) # Wait 1s before retry
+        print("CRITICAL: ALL CONNECTION ATTEMPTS FAILED.")
+        return None
     return None
 
 def release_db_connection(conn):

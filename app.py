@@ -626,10 +626,21 @@ def record_weekly_snapshot():
 scheduler = BackgroundScheduler()
 # Runs every Monday at 12:01 AM (00:01)
 scheduler.add_job(func=record_weekly_snapshot, trigger="cron", day_of_week='mon', hour=0, minute=1)
-scheduler.start()
+# Safe Startup Block (Professional Resilience)
+def startup_checks():
+    try:
+        init_db()
+        print("Professional Initialization: DB migrated successfully.")
+        # Only start scheduler once
+        if not scheduler.running:
+            scheduler.start()
+            print("Professional Initialization: Background Scheduler active.")
+    except Exception as e:
+        print(f"Startup Logic Error: {e}")
 
-# Initialize DB tables before starting
-init_db()
+# Use daemon thread to initialize in background so first request wins immediately
+import threading
+threading.Thread(target=startup_checks, daemon=True).start()
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000, host='0.0.0.0')
