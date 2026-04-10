@@ -1,8 +1,8 @@
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g
 import os
 import datetime
 import decimal
 import traceback
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
@@ -33,6 +33,18 @@ def handle_exception(e):
     tb = traceback.format_exc()
     print(tb)  # Will show in Render logs
     return jsonify({"error": str(e), "traceback": tb}), 500
+
+# Centralized DB Connection Management
+def get_db():
+    if 'db' not in g:
+        g.db = get_db_connection()
+    return g.db
+
+@app.teardown_appcontext
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
 
 @app.before_request
 def require_login():
@@ -91,7 +103,7 @@ def analytics():
 
 @app.route('/api/stats')
 def api_stats():
-    conn = get_db_connection()
+    conn = get_db()
     if not conn: return jsonify({"error": "No DB"}), 500
     cursor = conn.cursor()
     
@@ -127,7 +139,6 @@ def api_stats():
     best = cursor.fetchone()
     best_seller = f"{best['name']} ({best['article_no']})" if best else "No sales yet"
     
-    conn.close()
     return jsonify({
         "total_products": total_products,
         "total_stock": total_stock,
@@ -137,7 +148,7 @@ def api_stats():
 
 @app.route('/api/inventory')
 def api_inventory():
-    conn = get_db_connection()
+    conn = get_db()
     if not conn: return jsonify({"error": "No DB"}), 500
     cursor = conn.cursor()
     
@@ -188,14 +199,13 @@ def api_inventory():
     for p in products:
         p['sizes'] = sorted(p['sizes'], key=lambda x: x['size'])
         
-    conn.close()
     return jsonify({"categories": categories, "products": products})
 
 @app.route('/api/categories', methods=['POST'])
 def api_add_category():
     name = request.json.get('name')
     if not name: return jsonify({"error": "Name required"}), 400
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute("INSERT INTO Categories (name) VALUES (%s) RETURNING id", (name,))
@@ -205,7 +215,6 @@ def api_add_category():
         return jsonify({"id": new_id, "name": name})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    finally: conn.close()
 
 @app.route('/api/products', methods=['POST'])
 def api_add_product():
@@ -221,12 +230,11 @@ def api_add_product():
     if not all([name, article_no, category_id, sizes_json, mrp, default_discount]):
         return jsonify({"error": "Missing required fields"}), 400
         
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     
     cursor.execute("SELECT id FROM Products WHERE article_no = %s", (article_no,))
     if cursor.fetchone():
-        conn.close()
         return jsonify({"error": "Article number already exists!"}), 400
         
     mrp = float(mrp)
@@ -257,13 +265,10 @@ def api_add_product():
                            (product_id, float(sObj['size']), int(sObj['stock'])))
             
         conn.commit()
-        conn.commit()
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 400
-    finally:
-        conn.close()
 
 @app.route('/api/products/<int:id>/image', methods=['POST'])
 def api_update_product_image(id):
@@ -276,7 +281,7 @@ def api_update_product_image(id):
     image.save(path)
     image_path = f"images/{filename}"
     
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute("UPDATE Products SET image_path = %s WHERE id = %s", (image_path, id))
@@ -285,22 +290,18 @@ def api_update_product_image(id):
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route('/api/products/<int:id>/image/remove', methods=['POST'])
 def api_remove_product_image(id):
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE Products SET image_path = NULL WHERE id = ?", (id,))
+        cursor.execute("UPDATE Products SET image_path = NULL WHERE id = %s", (id,))
         conn.commit()
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route('/api/stock/adjust_batch', methods=['POST'])
 def api_adjust_stock_batch():
@@ -309,7 +310,7 @@ def api_adjust_stock_batch():
     if not updates:
         return jsonify({"error": "No updates provided"}), 400
         
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
         for up in updates:
@@ -336,23 +337,20 @@ def api_adjust_stock_batch():
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 400
-    finally:
-        conn.close()
 
 @app.route('/api/products/remove', methods=['POST'])
 def api_remove_product():
     product_id = request.json.get('product_id')
     if not product_id: return jsonify({"error": "Missing product_id"}), 400
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
-        cursor.execute("UPDATE Products SET is_active = 0 WHERE id = ?", (product_id,))
+        cursor.execute("UPDATE Products SET is_active = FALSE WHERE id = %s", (product_id,))
         conn.commit()
         return jsonify({"success": True})
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
-    finally: conn.close()
 
 @app.route('/api/stock/adjust', methods=['POST'])
 def api_stock_adjust():
@@ -368,7 +366,7 @@ def api_stock_adjust():
         
     amount = int(amount)
     
-    conn = get_db_connection()
+    conn = get_db()
     cursor = conn.cursor()
     try:
         cursor.execute("SELECT product_id, size, stock FROM ProductSizes WHERE id = %s", (size_id,))
@@ -392,12 +390,10 @@ def api_stock_adjust():
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route('/api/sales_advanced')
 def api_sales_advanced():
-    conn = get_db_connection()
+    conn = get_db()
     if not conn: return jsonify({"error": "No DB"}), 500
     cursor = conn.cursor()
     try:
@@ -505,8 +501,6 @@ def api_sales_advanced():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-    finally:
-        conn.close()
 
 @app.route('/sales_history')
 def sales_history():
@@ -514,7 +508,7 @@ def sales_history():
 
 @app.route('/api/sales_history')
 def api_sales_history():
-    conn = get_db_connection()
+    conn = get_db()
     if not conn: return jsonify({"error": "No DB"}), 500
     cursor = conn.cursor()
     cursor.execute("""
@@ -535,7 +529,6 @@ def api_sales_history():
             "sold_price": r['sold_price'],
             "discount": r['discount_applied']
         })
-    conn.close()
     return jsonify(sales)
 
 # Initialize DB tables before starting
