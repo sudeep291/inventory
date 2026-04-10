@@ -517,6 +517,8 @@ def api_sales_history():
     conn.close()
     return jsonify(sales)
 
+# Initialize DB tables before starting
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True, port=5000, host='0.0.0.0')
