@@ -179,6 +179,7 @@ function triggerImageUpload(productId) {
             }
         }
         
+        
         const formData = new FormData();
         formData.append('image', file);
         const data = await fetchAPI(`/api/products/${productId}/image`, { method: 'POST', body: formData });
@@ -229,8 +230,7 @@ async function searchSellProduct() {
     if (sellImg) {
         sellImg.classList.remove('img-loaded');
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        sellImg.onload = () => sellImg.classList.add('img-loaded');
-        sellImg.onerror = () => sellImg.classList.add('img-loaded');
+        optimizeImage(sellImg);
         sellImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
     }
 
@@ -347,8 +347,8 @@ async function searchUpdateProduct() {
     if (updateImg) {
         updateImg.classList.remove('img-loaded');
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        updateImg.onload = () => updateImg.classList.add('img-loaded');
-        updateImg.onerror = () => updateImg.classList.add('img-loaded');
+        // Use optimizeImage to attach listeners without overriding HTML attributes
+        optimizeImage(updateImg);
         updateImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
     }
     
@@ -360,11 +360,14 @@ async function searchUpdateProduct() {
         row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                <div><strong style="margin-right:1rem; color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> <span style="color:#334155; font-size:0.95rem; font-weight:700">Stock: ${s.stock}</span></div>
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <div style="display:flex; align-items:center; gap:0.75rem;">
+                    <strong style="color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> 
+                    <span style="color:#64748b; font-size:0.85rem; font-weight:600">Stock: ${s.stock}</span>
+                </div>
                 <label class="return-toggle" data-sizeid="${s.id}">
-                    <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); validateBatchBtn()">
-                    <span style="font-size:0.75rem; font-weight:800;">🔄 Mark as Return</span>
+                    <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.parentElement.nextElementSibling.querySelector('.batch-update-val')); validateBatchBtn()">
+                    <span>🔄 Return</span>
                 </label>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
