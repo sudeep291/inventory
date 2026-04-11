@@ -143,10 +143,11 @@ def add_security_headers(response):
     response.headers['Permissions-Policy'] = 'camera=(self), geolocation=(), microphone=(), payment=()'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
+        "worker-src 'self' blob:; "
         "connect-src 'self'"
     )
     return response
