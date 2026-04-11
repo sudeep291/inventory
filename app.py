@@ -35,10 +35,23 @@ BACKUP_FILE = 'static/resilience_backup.vault' # Refactored to vault extension f
 # 🛡️ CRYPTOGRAPHIC VAULT LAYER (AES-128 Protection)
 def get_vault_cipher():
     key = os.environ.get('DB_ENCRYPTION_KEY')
+    key_file = 'static/.vault.key'
+    
     if not key:
-        # Auto-generation for local development security (Enterprise Resilience)
-        key = Fernet.generate_key().decode()
-        print("⚠️ VAULT WARNING: No DB_ENCRYPTION_KEY found. Generated temporary one.")
+        # 🔑 Persistent Key Discovery: Check if we have a saved key from a previous session
+        if os.path.exists(key_file):
+            with open(key_file, 'r') as f:
+                key = f.read().strip()
+        else:
+            # Auto-generation for local development resilience
+            key = Fernet.generate_key().decode()
+            try:
+                # Save it locally so it survives the next Render restart
+                with open(key_file, 'w') as f:
+                    f.write(key)
+                logger.info("🔑 VAULT PROTECT: New encryption key generated and persisted.")
+            except: pass
+            
     return Fernet(key.encode())
 
 def save_cache_to_disk():
@@ -61,7 +74,9 @@ def load_cache_from_disk():
             decrypted_data = cipher.decrypt(encrypted_data).decode()
             GLOBAL_ANALYTICS_CACHE = json.loads(decrypted_data)
         except Exception as e:
-            print(f"VAULT LOAD ERROR (Wrong Key or Corrupt): {e}")
+            # 🛡️ SILENT RECOVERY: If key is wrong/missing, log and start fresh instead of crashing
+            logger.warning(f"VAULT RECOVERY: Key mismatch or corrupt vault. Starting fresh cache. ({e})")
+            GLOBAL_ANALYTICS_CACHE = {} 
 
 load_cache_from_disk()
 
