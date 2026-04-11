@@ -76,11 +76,6 @@
                 0%   { background-position: -200% center; }
                 100% { background-position: 200% center; }
             }
-            /* 4. Mint glow pulse — split-complementary to the pink-purple above */
-            @keyframes mintPulse {
-                0%, 100% { text-shadow: 0 1px 12px rgba(0,0,0,0.6), 0 0 0px rgba(110,231,183,0); }
-                50%       { text-shadow: 0 1px 12px rgba(0,0,0,0.6), 0 0 22px rgba(110,231,183,0.5); }
-            }
 
             .hero-text-block {
                 animation: heroEntrance 0.5s ease forwards, premiumFloat 5s ease-in-out 0.6s infinite;
@@ -107,23 +102,13 @@
                 transform: scale(1.04);
                 filter: drop-shadow(0 0 16px rgba(167,139,250,0.7));
             }
-            .hero-subtitle {
-                color: #6ee7b7;
-                font-weight: 500;
-                letter-spacing: 0.6px;
-                animation: heroEntrance 0.4s ease 0.4s both, mintPulse 3s ease-in-out 1s infinite;
-                will-change: text-shadow;
-            }
             </style>
 
             <div class="hero-text-block">
-                <h1 style="font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; letter-spacing: -1px; text-shadow: 0 2px 20px rgba(0,0,0,0.6); margin-bottom: 1rem; line-height:1.2;">
+                <h1 style="font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; letter-spacing: -1px; text-shadow: 0 2px 20px rgba(0,0,0,0.6); margin: 0; line-height:1.2;">
                     <span class="hero-welcome-word">Welcome</span><br>
                     <span class="hero-name">Mr. Prathap Avula</span>
                 </h1>
-                <p class="hero-subtitle" style="font-size: 1.1rem; text-shadow: 0 1px 12px rgba(0,0,0,0.6);">
-                    to Sri Vijayalakshmi Footwear Inventory System
-                </p>
             </div>
         </div>
     </div>
