@@ -15,9 +15,6 @@ from flask_compress import Compress
 from PIL import Image
 import io
 import bleach
-from flask_wtf.csrf import CSRFProtect
-from cryptography.fernet import Fernet
-from werkzeug.middleware.proxy_fix import ProxyFix
 import logging
 
 # 🚀 Enterprise Service Logging: Stream tracebacks to the Render terminal for deep debugging
@@ -27,54 +24,25 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Enterprise Persistence Layer (Zero-Crash Infrastructure)
-GLOBAL_ANALYTICS_CACHE = {} 
-BACKUP_FILE = 'static/resilience_backup.vault' # Refactored to vault extension for security
-
-# 🛡️ CRYPTOGRAPHIC VAULT LAYER (AES-128 Protection)
-def get_vault_cipher():
-    key = os.environ.get('DB_ENCRYPTION_KEY')
-    key_file = 'static/.vault.key'
-    
-    if not key:
-        # 🔑 Persistent Key Discovery: Check if we have a saved key from a previous session
-        if os.path.exists(key_file):
-            with open(key_file, 'r') as f:
-                key = f.read().strip()
-        else:
-            # Auto-generation for local development resilience
-            key = Fernet.generate_key().decode()
-            try:
-                # Save it locally so it survives the next Render restart
-                with open(key_file, 'w') as f:
-                    f.write(key)
-                logger.info("🔑 VAULT PROTECT: New encryption key generated and persisted.")
-            except: pass
-            
-    return Fernet(key.encode())
+GLOBAL_ANALYTICS_CACHE = {}
+BACKUP_FILE = 'static/resilience_backup.json'
 
 def save_cache_to_disk():
     try:
-        cipher = get_vault_cipher()
-        data_json = json.dumps(GLOBAL_ANALYTICS_CACHE)
-        encrypted_data = cipher.encrypt(data_json.encode())
-        with open(BACKUP_FILE, 'wb') as f:
-            f.write(encrypted_data)
+        with open(BACKUP_FILE, 'w') as f:
+            json.dump(GLOBAL_ANALYTICS_CACHE, f)
     except Exception as e:
-        print(f"VAULT SAVE ERROR: {e}")
+        logger.warning(f"Cache save error: {e}")
 
 def load_cache_from_disk():
     global GLOBAL_ANALYTICS_CACHE
     if os.path.exists(BACKUP_FILE):
         try:
-            cipher = get_vault_cipher()
-            with open(BACKUP_FILE, 'rb') as f:
-                encrypted_data = f.read()
-            decrypted_data = cipher.decrypt(encrypted_data).decode()
-            GLOBAL_ANALYTICS_CACHE = json.loads(decrypted_data)
+            with open(BACKUP_FILE, 'r') as f:
+                GLOBAL_ANALYTICS_CACHE = json.load(f)
         except Exception as e:
-            # 🛡️ SILENT RECOVERY: If key is wrong/missing, log and start fresh instead of crashing
-            logger.warning(f"VAULT RECOVERY: Key mismatch or corrupt vault. Starting fresh cache. ({e})")
-            GLOBAL_ANALYTICS_CACHE = {} 
+            logger.warning(f"Cache load error, starting fresh: {e}")
+            GLOBAL_ANALYTICS_CACHE = {}
 
 load_cache_from_disk()
 
@@ -129,30 +97,16 @@ app.secret_key = os.environ.get('SECRET_KEY', 'enterprise_super_secret_key_999')
 
 # 🛡️ GLOBAL SECURITY HARDENING (SecOps)
 # Content Security Policy: Refined for APK Compatibility
-csp = {
-    'default-src': '\'self\'',
-    'script-src': ['\'self\'', '\'unsafe-inline\'', 'https://cdn.jsdelivr.net'],
-    'style-src': ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
-    'font-src': ['\'self\'', 'https://fonts.gstatic.com'],
-    'img-src': ['\'self\'', 'data:', 'blob:', 'https://via.placeholder.com'], # Added blob: for APK charts
-    'connect-src': ['\'self\'', 'data:', 'blob:'] # Added blob: for analytic streaming
-}
-
 # Enterprise Global Variables (Infrastructure Layer)
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
 UPLOAD_FOLDER = os.path.join('static', 'images')
-IS_PROD = os.environ.get('RENDER') is not None # Auto-detect production environment
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# 🛡️ ELITE DEFENSIVE SHIELDING (SecOps Level 2)
-# CSRF Protection: Forces every command to have a unique cryptographic token
-csrf = CSRFProtect(app)
-
-# Session Hardening: Prevents hackers from stealing or leaking login sessions
+# Session Hardening
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=False, # 🛡️ Render handles this; forcing it inside the code causes 502 loops
+    SESSION_COOKIE_SECURE=False,
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8)
 )
@@ -181,7 +135,6 @@ def add_security_headers(response):
 
 # --- HIGH AVAILABILITY HEALTH PROBE ---
 @app.route('/ping')
-@csrf.exempt
 def enterprise_ping():
     return "SYSTEM_HEALTHY", 200
 # ----------------------------------------
