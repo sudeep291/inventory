@@ -1,5 +1,4 @@
 # Sensitive data
-.env
 
 # Binaries and large files
 cloudflared.exe
