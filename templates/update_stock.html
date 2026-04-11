@@ -30,14 +30,14 @@
         margin-bottom: 0.75rem !important; 
     }
     .premium-result-card p { 
-        font-size: 1.3rem !important; 
+        font-size: 1.35rem !important; 
         color: #475569 !important;
-        margin-bottom: 0.75rem !important; 
+        margin-bottom: 1rem !important; 
         display: flex;
-        align-items: center; /* Aligns better than space-between */
-        gap: 1.5rem; /* Specific gap instead of space-between */
+        justify-content: space-between; /* Restored wide layout */
+        align-items: center;
         border-bottom: 1px dashed #e2e8f0;
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.75rem;
     }
     .premium-result-card .val {
         font-weight: 800 !important;
@@ -97,18 +97,18 @@
                     <div class="img-hover-btn">🔍 PREVIEW</div>
                 </div>
                 <div class="result-info">
-                    <h3 id="updateResName" style="color:#ef4444 !important; font-size:3rem !important; font-weight:900 !important; text-shadow: 0 0 10px rgba(239, 68, 68, 0.2);"></h3>
+                    <h3 id="updateResName" style="color:#ef4444 !important; font-size:3rem !important; font-weight:900 !important; margin-bottom:1.5rem !important;"></h3>
                     
-                    <p class="text-brand-mrp" style="height:auto; padding:1rem 0;">
-                        <span class="text-brand-label lbl-mrp" style="font-size:1.1rem !important; min-width:120px;">Target MRP:</span>
+                    <p class="text-brand-mrp" style="height:auto; padding:1.5rem 0;">
+                        <span class="text-brand-label lbl-mrp" style="font-size:1.1rem !important;">Target MRP:</span>
                         <span class="val" style="font-size:2.2rem !important; display:flex; align-items:center;">
-                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:900 !important; font-size:2.5rem !important; width:180px; outline:none; border-bottom:3px solid #2563eb" oninput="resyncUpdateSold()">
+                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:900 !important; font-size:2.5rem !important; width:180px; text-align:right; outline:none; border-bottom:3px solid #2563eb" oninput="resyncUpdateSold()">
                         </span>
                     </p>
                     
-                    <p class="text-brand-success" style="margin-bottom:2rem; height:auto; padding:1.5rem 0; border-bottom:1px dashed #e2e8f0;">
-                        <span class="text-brand-label lbl-sold" style="font-size:1.1rem !important; min-width:120px;">Target Sold:</span>
-                        <span class="val" style="font-size:2.5rem !important; color:#059669 !important; font-weight:900 !important;">₹<span id="updateResSold"></span></span>
+                    <p class="text-brand-success" style="margin-bottom:2rem; height:auto; padding:1.5rem 0;">
+                        <span class="text-brand-label lbl-sold" style="font-size:1.1rem !important;">Target Sold:</span>
+                        <span class="val" style="font-size:2.8rem !important; color:#059669 !important; font-weight:900 !important;">₹<span id="updateResSold"></span></span>
                     </p>
                     
                     <label class="text-brand-label lbl-input" style="display:block; margin-bottom:1rem;">Input Quantities to Add</label>

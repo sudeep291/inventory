@@ -363,24 +363,20 @@ async function searchUpdateProduct() {
     const sizesContainer = document.getElementById('updateResSizes');
     sizesContainer.style.display = 'flex';
     sizesContainer.style.flexDirection = 'column';
-    sizesContainer.style.alignItems = 'center'; /* Centering the row list */
+    sizesContainer.style.gap = '1rem';
     sizesContainer.innerHTML = '';
     
     prod.sizes.forEach(s => {
         const row = document.createElement('div');
         row.className = 'update-row';
         row.style.display = 'flex'; 
-        row.style.flexWrap = 'wrap'; 
-        row.style.gap = '1.25rem';
-        row.style.justifyContent = 'center'; /* Horizontal centering */
+        row.style.justifyContent = 'space-between'; /* Restored wide logic */
         row.style.alignItems = 'center';
         row.style.background = '#ffffff'; 
-        row.style.padding = '1.25rem'; 
-        row.style.borderRadius = '16px'; 
+        row.style.padding = '1rem 1.5rem'; 
+        row.style.borderRadius = '12px'; 
         row.style.border = '1px solid #e2e8f0';
-        row.style.marginBottom = '0.75rem';
         row.style.width = '100%';
-        row.style.maxWidth = '550px';
         
         row.innerHTML = `
             <div style="display:flex; align-items:center; gap:1.25rem;">
@@ -426,25 +422,23 @@ function addNewUpdateSizeRow() {
     const row = document.createElement('div');
     row.className = 'update-row';
     row.style.display = 'flex'; 
-    row.style.justifyContent = 'center'; 
+    row.style.justifyContent = 'space-between'; 
     row.style.alignItems = 'center';
-    row.style.gap = '1.25rem';
     row.style.background = '#eff6ff'; 
-    row.style.padding = '1rem 1.25rem'; 
-    row.style.borderRadius = '16px'; 
+    row.style.padding = '1rem 1.5rem'; 
+    row.style.borderRadius = '12px'; 
     row.style.border = '1px solid #3b82f6';
     row.style.width = '100%';
-    row.style.maxWidth = '550px';
     
     row.innerHTML = `
-        <div style="display:flex; align-items:center; gap:0.75rem;">
+        <div style="display:flex; align-items:center; gap:1.25rem;">
             <strong style="color:#1d4ed8; font-size:1.1rem">UK</strong> 
-            <input type="number" class="new-size-val" placeholder="Size" step="0.5" style="width:70px; padding:0.6rem; border:2.5px solid #3b82f6; border-radius:10px; font-weight:900; outline:none;">
-            <span style="color:#1d4ed8; font-weight:900; margin-left:0.5rem;">Qty:</span>
+            <input type="number" class="new-size-val" placeholder="Size" step="0.5" style="width:70px; padding:0.6rem; border:2px solid #3b82f6; border-radius:8px; font-weight:700">
+            <span style="color:#1d4ed8; font-weight:700; margin-left:1rem;">Add Stock:</span>
         </div>
-        <div style="display:flex; align-items:center; gap:0.75rem;">
-            <input type="number" class="batch-update-val is-new-size" placeholder="+Qty" min="1" style="width:90px; padding:0.6rem; border:2.5px solid #3b82f6; border-radius:10px; font-weight:900; outline:none;" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; } else { this.style.backgroundColor='white'; }; validateBatchBtn()">
-            <button type="button" class="btn danger" style="padding:0.5rem 0.7rem; font-size:0.8rem; border-radius:10px;" onclick="this.parentElement.parentElement.remove(); validateBatchBtn()">X</button>
+        <div style="display:flex; align-items:center; gap:1rem;">
+            <input type="number" class="batch-update-val is-new-size" placeholder="+Qty" min="1" style="width:85px; padding:0.6rem; border:2px solid #3b82f6; border-radius:8px; font-weight:700" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; } else { this.style.backgroundColor='white'; }; validateBatchBtn()">
+            <button type="button" class="btn danger" style="padding:0.4rem 0.6rem; font-size:0.8rem; border-radius:8px;" onclick="this.parentElement.parentElement.remove(); validateBatchBtn()">X</button>
         </div>
     `;
     container.appendChild(row);
