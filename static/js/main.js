@@ -591,20 +591,24 @@ async function loadAdvancedAnalytics() {
     if (!data) return;
         if(data.error) return;
 
-        // 1. Daily
+        // 1. Daily Analytics (Return-Aware Performance)
         animateValue(document.getElementById('dSold'), 0, data.daily.pairs, 1000);
         if (document.getElementById('dUnique')) {
             animateValue(document.getElementById('dUnique'), 0, data.daily.unique_pairs, 1000);
         }
         animateValue(document.getElementById('dRev'), 0, data.daily.revenue, 1000, true);
-        animateValue(document.getElementById('dRetToday'), 0, data.daily.returns, 1000);
+        
+        const moneyTodayEl = document.getElementById('dMoneyRet');
+        if (moneyTodayEl) animateValue(moneyTodayEl, 0, data.daily.money_returned, 1000, true);
+        
         if (document.getElementById('dSurplus')) {
-            animateValue(document.getElementById('dSurplus'), 0, data.daily.surplus_loss, 1000, true);
+            animateValue(document.getElementById('dSurplus'), 0, data.daily.net_surplus, 1000, true);
         }
 
-        // 2. Weekly
+        // 2. Weekly Performance (Return-Aware Performance)
         animateValue(document.getElementById('wSold'), 0, data.weekly.pairs, 1000);
-        animateValue(document.getElementById('wProf'), 0, data.weekly.profit, 1000, true);
+        const wSurpEl = document.getElementById('wSurplus');
+        if (wSurpEl) animateValue(wSurpEl, 0, data.weekly.net_surplus, 1000, true);
 
         // Calculate Overall for Hero & Profit Matrix
         let tRev = 0, tProf = 0, tLoss = 0, tPairs = 0;
@@ -615,11 +619,11 @@ async function loadAdvancedAnalytics() {
             if(r.profit < 0) tLoss += Math.abs(r.profit);
         });
 
-        // Hero (The "Accurate SaaS Equations")
+        // Hero Analytics (Synchronized with Overall Database)
         animateValue(document.getElementById('ovSales'), 0, data.weekly.pairs, 1500);
         animateValue(document.getElementById('ovRevenue'), 0, data.weekly.revenue, 1500, true);
-        animateValue(document.getElementById('ovStock'), 0, data.stock.total_stock, 1500);
-        animateValue(document.getElementById('ovReturns'), 0, data.stock.total_returned, 1500);
+        animateValue(document.getElementById('ovStock'), 0, data.overall.vault_stock, 1500);
+        animateValue(document.getElementById('ovReturns'), 0, data.daily.returns, 1500);
 
         // Comparison Intelligence Logic
         const compRevEl = document.getElementById('compareRevenue');
@@ -645,9 +649,12 @@ async function loadAdvancedAnalytics() {
             }
         }
 
-        // Matrix
-        animateValue(document.getElementById('plProf'), 0, tProf, 1200, true);
-        animateValue(document.getElementById('plLoss'), 0, tLoss, 1200, true);
+        // Profit Matrix (Net System Performance)
+        const plProfEl = document.getElementById('plProf');
+        if (plProfEl) animateValue(plProfEl, 0, data.overall.net_surplus, 1200, true);
+        
+        const plRetEl = document.getElementById('plReturned');
+        if (plRetEl) animateValue(plRetEl, 0, data.overall.money_returned, 1200, true);
 
         // Stock Status
         animateValue(document.getElementById('sCurr'), 0, data.stock.total_stock, 1000);

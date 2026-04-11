@@ -602,16 +602,20 @@ def get_consolidated_analytics():
     if not conn: return None
     try:
         cursor = conn.cursor()
-        # Daily Analytics (Net Calculation: Sales - Returns)
+        # Enterprise Analytics Suite: Fully Return-Aware Financial Calculation
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_today,
                 COUNT(DISTINCT CASE WHEN s.status = 'SALE' THEN s.product_id END) as unique_pairs_today,
                 COALESCE(SUM(CASE WHEN s.status = 'RETURNED' THEN s.quantity ELSE 0 END), 0) as returns_today,
                 ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 0), 2) as rev_today,
-                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0), 2) as gains_today,
-                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0), 2) as losses_today,
-                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as net_surplus_today
+                -- 🛡️ Net Surplus Performance: Correctly neutralizes gains/losses on return
+                ROUND(COALESCE(SUM(CASE 
+                    WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity 
+                    ELSE -((s.sold_price - p.selling_price) * s.quantity) 
+                END), 0), 2) as net_surplus_today,
+                -- Explicit Tracking of Money Returned
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'RETURNED' THEN s.sold_price * s.quantity ELSE 0 END), 0), 2) as money_returned_today
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE DATE(s.sale_date) = CURRENT_DATE
         """)
@@ -620,31 +624,54 @@ def get_consolidated_analytics():
             "pairs": float(dr['pairs_today']), 
             "unique_pairs": dr['unique_pairs_today'],
             "returns": int(dr['returns_today']),
+            "money_returned": float(dr['money_returned_today']),
             "revenue": float(dr['rev_today']), 
-            "profit": max(0, float(dr['net_surplus_today'])),
-            "surplus_loss": float(dr['net_surplus_today'])
+            "net_surplus": float(dr['net_surplus_today'])
         }
         
-        # Weekly Analytics (Net Calculation: Sales - Returns)
+        # Weekly Analytics: Synchronized with Daily Accuracy
         cursor.execute("""
             SELECT 
                 COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_week,
                 ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 0), 2) as rev_week,
-                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as net_surplus_week
+                ROUND(COALESCE(SUM(CASE 
+                    WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity 
+                    ELSE -((s.sold_price - p.selling_price) * s.quantity) 
+                END), 0), 2) as net_surplus_week,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'RETURNED' THEN s.sold_price * s.quantity ELSE 0 END), 0), 2) as money_returned_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
-            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '6 days'
+            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days'
         """)
         wr = cursor.fetchone()
-        
-        cursor.execute("SELECT total_revenue FROM WeeklyMetrics ORDER BY snapshot_date DESC LIMIT 1")
-        last_wr = cursor.fetchone()
-        last_week_rev = float(last_wr['total_revenue']) if last_wr else 0.0
-        
         weekly = {
             "pairs": float(wr['pairs_week']), 
             "revenue": float(wr['rev_week']), 
-            "profit": max(0, float(wr['net_surplus_week'])),
-            "last_week_revenue": last_week_rev
+            "net_surplus": float(wr['net_surplus_week']),
+            "money_returned": float(wr['money_returned_week'])
+        }
+
+        # Overall Analytical Ledger (Total Life-To-Date)
+        cursor.execute("""
+            SELECT 
+                COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_total,
+                ROUND(COALESCE(SUM(CASE 
+                    WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity 
+                    ELSE -((s.sold_price - p.selling_price) * s.quantity) 
+                END), 0), 2) as net_surplus_total,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'RETURNED' THEN s.sold_price * s.quantity ELSE 0 END), 0), 2) as money_returned_total
+            FROM Sales s JOIN Products p ON s.product_id = p.id
+        """)
+        tr = cursor.fetchone()
+        
+        # Vault Inventory Assessment (Real-Time Valuation)
+        cursor.execute("SELECT COALESCE(SUM(stock), 0) as vault_stock FROM ProductSizes")
+        sr_vault = cursor.fetchone()
+        
+        overall = {
+            "pairs": float(tr['pairs_total']),
+            "net_surplus": float(tr['net_surplus_total']),
+            "money_returned": float(tr['money_returned_total']),
+            "vault_stock": int(sr_vault['vault_stock'])
         }
         
         cursor.execute("""
