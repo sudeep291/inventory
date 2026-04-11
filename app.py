@@ -159,12 +159,26 @@ def enterprise_ping():
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Global Error Handler for Debugging Render Deployment
+# ============================================================
+# 🛡️ GLOBAL ERROR HANDLERS — Crash-Proof User Experience
+# ============================================================
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('error.html', code=404,
+        message="Page not found. It may have moved or never existed."), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"500 ERROR: {traceback.format_exc()}")
+    return render_template('error.html', code=500,
+        message="Something went wrong on our end. We've logged it and will fix it."), 500
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     tb = traceback.format_exc()
-    print(tb)  # Will show in Render logs
-    return jsonify({"error": str(e), "traceback": tb}), 500
+    logger.error(f"UNHANDLED EXCEPTION: {tb}")
+    return render_template('error.html', code=500,
+        message="An unexpected error occurred. The team has been notified."), 500
 
 # Centralized DB Connection Management
 def get_db():

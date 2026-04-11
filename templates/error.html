@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+{% block head %}
+<style>
+.error-page {
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 3rem 1.5rem;
+}
+.error-code {
+    font-size: clamp(5rem, 20vw, 9rem);
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 1rem;
+}
+.error-page h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+.error-page p {
+    color: var(--text-secondary);
+    font-family: 'Inter', sans-serif;
+    max-width: 420px;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+.error-actions { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="dashboard-layout">
+    <div class="error-page">
+        <div class="error-code">{{ code }}</div>
+        <h2>{% if code == 404 %}Page Not Found{% else %}Something Went Wrong{% endif %}</h2>
+        <p>{{ message }}</p>
+        <div class="error-actions">
+            <a href="{{ url_for('dashboard') }}" class="btn primary">← Back to Dashboard</a>
+            <a href="javascript:history.back()" class="btn outline" style="color:var(--text-secondary); border:1px solid var(--border);">Go Back</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
