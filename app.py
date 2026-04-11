@@ -148,7 +148,7 @@ def add_security_headers(response):
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data: blob:; "
         "worker-src 'self' blob:; "
-        "connect-src 'self'"
+        "connect-src 'self' https://api.upcitemdb.com"
     )
     return response
 

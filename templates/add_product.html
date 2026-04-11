@@ -233,14 +233,34 @@
         }
     }
 
-    function onScanSuccessAdd(decodedText, decodedResult) {
+    async function onScanSuccessAdd(decodedText, decodedResult) {
         // Stop scanning immediately on success
         stopBarcodeScannerAdd();
         
-        // Populate the input
+        // Populate the input with barcode
         const searchInput = document.getElementById('addArticleInput');
         searchInput.value = decodedText;
         showToast("Barcode Scanned: " + decodedText);
+
+        // Intelligent Auto-Fill: Try fetching product name from Global Barcode DB
+        showToast("Looking up Global Database...");
+        try {
+            const apiRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${decodedText}`);
+            const apiData = await apiRes.json();
+            
+            if (apiData && apiData.items && apiData.items.length > 0) {
+                const item = apiData.items[0];
+                const nameInput = document.querySelector('input[name="name"]');
+                if (nameInput) {
+                    nameInput.value = item.title || item.brand || '';
+                    showToast("Product Name Auto-Filled!");
+                }
+            } else {
+                showToast("Not registered on global DB. Please enter Name manually.");
+            }
+        } catch(e) {
+            console.log("Global DB lookup failed", e);
+        }
     }
 
     function onScanFailureAdd(error) {
