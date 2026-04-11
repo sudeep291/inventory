@@ -27,6 +27,12 @@ load_dotenv()
 GLOBAL_ANALYTICS_CACHE = {}
 BACKUP_FILE = 'static/resilience_backup.json'
 
+# 🔐 BRUTE-FORCE LOCKOUT ENGINE (Zero-Package, Pure Python)
+# Tracks: { ip_address: {"attempts": N, "locked_until": datetime | None} }
+_LOGIN_LOCKOUT = {}
+MAX_ATTEMPTS = 5
+LOCKOUT_MINUTES = 15
+
 def save_cache_to_disk():
     try:
         with open(BACKUP_FILE, 'w') as f:
@@ -181,13 +187,43 @@ def require_login():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     error = None
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+    record = _LOGIN_LOCKOUT.get(ip, {"attempts": 0, "locked_until": None})
+
+    # Check if this IP is currently locked out
+    if record["locked_until"] and datetime.datetime.utcnow() < record["locked_until"]:
+        remaining = int((record["locked_until"] - datetime.datetime.utcnow()).total_seconds() / 60) + 1
+        return render_template('login.html', error=f"Too many failed attempts. Try again in {remaining} minute(s).")
+
     if request.method == 'POST':
         password = request.form.get('password')
         if password == OWNER_PASSWORD:
+            # ✅ Correct password — clear any previous failed attempts for this IP
+            _LOGIN_LOCKOUT.pop(ip, None)
             session['logged_in'] = True
+            session.permanent = True
             return redirect(url_for('dashboard'))
         else:
-            error = "Invalid password."
+            # ❌ Wrong password — increment counter
+            record["attempts"] = record.get("attempts", 0) + 1
+            attempts_left = MAX_ATTEMPTS - record["attempts"]
+
+            if record["attempts"] >= MAX_ATTEMPTS:
+                record["locked_until"] = datetime.datetime.utcnow() + datetime.timedelta(minutes=LOCKOUT_MINUTES)
+                logger.warning(f"🔒 SECURITY: IP {ip} locked out after {MAX_ATTEMPTS} failed login attempts.")
+                error = f"Access locked for {LOCKOUT_MINUTES} minutes due to too many wrong attempts."
+            else:
+                error = f"Invalid password. {attempts_left} attempt(s) remaining before lockout."
+
+            _LOGIN_LOCKOUT[ip] = record
+
+            # Self-cleaning: prune expired lockouts to prevent memory bloat
+            expired = [k for k, v in _LOGIN_LOCKOUT.items()
+                       if v["locked_until"] and datetime.datetime.utcnow() > v["locked_until"]
+                       and v["attempts"] >= MAX_ATTEMPTS]
+            for k in expired:
+                _LOGIN_LOCKOUT.pop(k, None)
+
     return render_template('login.html', error=error)
 
 @app.route('/logout')
