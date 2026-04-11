@@ -410,7 +410,7 @@ def api_adjust_stock_batch():
                     refund_px = safe_float(up.get('price'), 0.0)
                     cursor.execute("""
                         INSERT INTO Sales (product_id, size, quantity, sold_price, status)
-                        VALUES (%s, %s, %s, %s, 'RETURN')
+                        VALUES (%s, %s, %s, %s, 'RETURNED')
                     """, (product_id, size, amount, refund_px))
             else:
                 size_id = up.get('size_id')
@@ -421,7 +421,7 @@ def api_adjust_stock_batch():
                     refund_px = safe_float(up.get('price'), 0.0)
                     cursor.execute("""
                         INSERT INTO Sales (product_id, size, quantity, sold_price, status)
-                        VALUES (%s, %s, %s, %s, 'RETURN')
+                        VALUES (%s, %s, %s, %s, 'RETURNED')
                     """, (row['product_id'], row['size'], amount, refund_px))
         
         conn.commit()
@@ -694,19 +694,19 @@ def record_weekly_snapshot():
         cursor = conn.cursor()
         
         # Net Accounting: Subtract quantity for RETURN status
-        cursor.execute("SELECT COALESCE(SUM(CASE WHEN status='SALE' THEN quantity ELSE -quantity END), 0) as pairs FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
+        cursor.execute("SELECT COALESCE(SUM(CASE WHEN status='SALE' THEN quantity WHEN status='RETURNED' THEN -quantity ELSE 0 END), 0) as pairs FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_pairs_sold = row['pairs'] if row and 'pairs' in row else 0
         
         # Net Revenue: Subtract sold_price * quantity for RETURN status
-        cursor.execute("SELECT ROUND(COALESCE(SUM(CASE WHEN status='SALE' THEN sold_price * quantity ELSE -(sold_price * quantity) END), 0), 2) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
+        cursor.execute("SELECT ROUND(COALESCE(SUM(CASE WHEN status='SALE' THEN sold_price * quantity WHEN status='RETURNED' THEN -(sold_price * quantity) ELSE 0 END), 0), 2) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_rev = row['rev'] if row and 'rev' in row else 0
         
         cursor.execute("""
-            SELECT ROUND(COALESCE(SUM(CASE WHEN s.status='SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as profit
+            SELECT ROUND(COALESCE(SUM(CASE WHEN s.status='SALE' THEN (s.sold_price - p.selling_price) * s.quantity WHEN s.status='RETURNED' THEN -((s.sold_price - p.selling_price) * s.quantity) ELSE 0 END), 0), 2) as profit
             FROM Sales s JOIN Products p ON s.product_id = p.id
-            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days' AND s.sale_date < CURRENT_DATE
+            WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days' AND s.sale_date < CURRENT_DATE AND s.status IN ('SALE', 'RETURNED')
         """)
         row = cursor.fetchone()
         net_prof = row['profit'] if row and 'profit' in row else 0

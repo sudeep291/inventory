@@ -126,6 +126,9 @@ def init_db():
         """,
         """
         ALTER TABLE Products ALTER COLUMN image_path TYPE TEXT;
+        """,
+        """
+        UPDATE Sales SET status = 'RETURNED' WHERE status = 'RETURN';
         """
     ]
     
