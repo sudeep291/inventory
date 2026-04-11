@@ -490,7 +490,6 @@ async function executeBatchUpdate() {
         playSuccessSequence('updateResultContainer', 'Stock Augmented Safely!', async () => {
             document.getElementById('updateSearchInput').value = '';
             await fetchProducts(); 
-            await loadReturnStats();
         });
     }
 }
@@ -800,10 +799,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
         optimizeImage(img);
     });
-    // Load return statistics if on the appropriate page
-    if (document.getElementById('totalReturnCount')) {
-        loadReturnStats();
-    }
 });
 
 /* ==================================
