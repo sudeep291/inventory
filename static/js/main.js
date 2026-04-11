@@ -229,9 +229,9 @@ async function searchSellProduct() {
     if (sellImg) {
         sellImg.classList.remove('img-loaded');
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        sellImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
         sellImg.onload = () => sellImg.classList.add('img-loaded');
         sellImg.onerror = () => sellImg.classList.add('img-loaded');
+        sellImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
     }
 
     selectedSellProductMRP = prod.mrp;
@@ -347,9 +347,9 @@ async function searchUpdateProduct() {
     if (updateImg) {
         updateImg.classList.remove('img-loaded');
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        updateImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
         updateImg.onload = () => updateImg.classList.add('img-loaded');
         updateImg.onerror = () => updateImg.classList.add('img-loaded');
+        updateImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
     }
     
     const sizesContainer = document.getElementById('updateResSizes');
@@ -707,9 +707,6 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
             const img = entry.target;
             const src = img.getAttribute('data-src');
             if (src) {
-                // Ensure spaces in the image path are safe via encodeURI
-                img.src = encodeURI(src);
-                img.removeAttribute('data-src');
                 img.addEventListener('load', () => {
                     img.classList.add('img-loaded');
                     img.style.display = 'block';
@@ -724,6 +721,9 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
                         img.nextElementSibling.style.display = 'flex';
                     }
                 });
+                // ALWAYS set src after attaching listeners to prevent cache race conditions
+                img.src = encodeURI(src);
+                img.removeAttribute('data-src');
             }
             observer.unobserve(img);
         }
