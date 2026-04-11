@@ -30,13 +30,15 @@
         margin-bottom: 0.75rem !important; 
     }
     .premium-result-card p { 
-        font-size: 1.3rem !important; 
+        font-size: 1.4rem !important; 
         color: #475569 !important;
-        margin-bottom: 0.75rem !important; 
+        margin-bottom: 1rem !important; 
         display: flex;
-        justify-content: space-between;
+        justify-content: flex-start; /* Reduced space between key and value */
+        gap: 2rem;
+        align-items: center;
         border-bottom: 1px dashed #e2e8f0;
-        padding-bottom: 0.5rem;
+        padding-bottom: 0.75rem;
     }
     .premium-result-card .val {
         font-weight: 800 !important;
@@ -50,10 +52,18 @@
         font-weight: 800 !important;
     }
     /* Distinct Attribute Colours for High Visibility */
-    .lbl-mrp { color: #2563eb !important; font-weight: 900 !important; font-size:0.85rem !important;}      /* Bright Blue */
-    .lbl-strategy { color: #9333ea !important; font-weight: 900 !important; font-size:0.85rem !important;} /* Bright Purple */
-    .lbl-sold { color: #059669 !important; font-weight: 900 !important; font-size:0.85rem !important;}     /* Bright Emerald */
+    .text-brand-label {
+        font-size: 1.15rem !important; /* Increased font size for keys */
+        font-weight: 850 !important;
+        min-width: 140px; /* Ensures consistent alignment */
+    }
+    .lbl-mrp { color: #2563eb !important; }      /* Bright Blue */
+    .lbl-strategy { color: #9333ea !important; } /* Bright Purple */
+    .lbl-sold { color: #059669 !important; }     /* Bright Emerald */
     .lbl-input { color: #312e81 !important; margin-bottom: 0.5rem !important; } /* Deep Indigo */
+    
+    /* Specific overrides for visibility */
+    #updateResName, .text-brand-primary { color: #dc2626 !important; } /* Red Product Name */
     
     .btn-premium-add {
         background: #334155;
