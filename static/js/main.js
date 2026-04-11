@@ -74,7 +74,7 @@ async function loadWelcomeDashboard() {
     const salesData = await fetchAPI('/api/sales_advanced');
     if (!salesData) return;
         let lsHTML = '';
-        salesData.stock.low_stock.forEach(item => {
+        salesData.low_stock_list.forEach(item => {
             lsHTML += `<tr>
                 <td><strong>${item.article}</strong></td>
                 <td>${item.name}</td>
