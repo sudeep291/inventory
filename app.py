@@ -139,6 +139,28 @@ def add_product_page():
 def analytics():
     return render_template('analytics.html', active_page='analytics')
 
+@app.route('/admin/factory_reset')
+def factory_reset():
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+        
+    conn = get_db()
+    if not conn: return "Database connection error", 500
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("TRUNCATE TABLE Categories, Products, ProductSizes, Sales, WeeklyMetrics RESTART IDENTITY CASCADE;")
+        conn.commit()
+        
+        global GLOBAL_ANALYTICS_CACHE
+        GLOBAL_ANALYTICS_CACHE.clear()
+        save_cache_to_disk()
+        
+        return "DATABASE COMPLETELY WIPED TO FACTORY SETTINGS. All practice data has been deleted but the architecture remains. You can now navigate back to the app.", 200
+    except Exception as e:
+        conn.rollback()
+        return f"CRITICAL ERROR DURING WIPE: {e}", 500
+
 # ==========================================
 # API ENDPOINTS
 # ==========================================
