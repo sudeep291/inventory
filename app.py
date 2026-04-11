@@ -517,6 +517,7 @@ def get_consolidated_analytics():
             SELECT 
                 COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_today,
                 COUNT(DISTINCT CASE WHEN s.status = 'SALE' THEN s.product_id END) as unique_pairs_today,
+                COALESCE(SUM(CASE WHEN s.status = 'RETURNED' THEN s.quantity ELSE 0 END), 0) as returns_today,
                 ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 0), 2) as rev_today,
                 ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0), 2) as gains_today,
                 ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0), 2) as losses_today,
@@ -527,7 +528,8 @@ def get_consolidated_analytics():
         dr = cursor.fetchone()
         daily = {
             "pairs": float(dr['pairs_today']), 
-            "unique_pairs": dr['unique_pairs_today'], 
+            "unique_pairs": dr['unique_pairs_today'],
+            "returns": int(dr['returns_today']),
             "revenue": float(dr['rev_today']), 
             "profit": max(0, float(dr['net_surplus_today'])),
             "surplus_loss": float(dr['net_surplus_today'])

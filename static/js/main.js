@@ -589,7 +589,7 @@ async function loadAdvancedAnalytics() {
             animateValue(document.getElementById('dUnique'), 0, data.daily.unique_pairs, 1000);
         }
         animateValue(document.getElementById('dRev'), 0, data.daily.revenue, 1000, true);
-        animateValue(document.getElementById('dProf'), 0, data.daily.profit, 1000, true);
+        animateValue(document.getElementById('dRetToday'), 0, data.daily.returns, 1000);
         if (document.getElementById('dSurplus')) {
             animateValue(document.getElementById('dSurplus'), 0, data.daily.surplus_loss, 1000, true);
         }
