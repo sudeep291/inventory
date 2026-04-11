@@ -1,4 +1,9 @@
 {% extends 'layout.html' %}
+{% block head %}
+<link rel="preload" as="image" href="/static/images/footwear_bg_1.webp" fetchpriority="high">
+<link rel="preload" as="image" href="/static/images/footwear_bg_2.webp">
+<link rel="preload" as="image" href="/static/images/footwear_bg_3.webp">
+{% endblock %}
 {% block content %}
 <main class="dashboard-layout">
 <style>
@@ -45,9 +50,9 @@ body[data-theme='dark'] .welcome-overlay {
 </style>
 
     <div class="welcome-slider-container">
-        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_1.png');"></div>
-        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_2.png');"></div>
-        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_3.png');"></div>
+        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_1.webp');"></div>
+        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_2.webp');"></div>
+        <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_3.webp');"></div>
         
         <div class="welcome-overlay">
             <h1 style="font-size: 4rem; font-weight: 800; color: var(--text-primary); letter-spacing: -1px; text-shadow: 0px 4px 10px rgba(0,0,0,0.1); margin-bottom: 1rem; line-height:1.2;">

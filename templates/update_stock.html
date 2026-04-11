@@ -1,11 +1,10 @@
-{% extends 'layout.html' %}
 {% block head %}
-<link rel="preload" as="image" href="/static/images/bg_update_stock.png">
+<link rel="preload" as="image" href="/static/images/bg_update_stock.webp" fetchpriority="high">
 {% endblock %}
 {% block content %}
 <style>
     body {
-        background: url('/static/images/bg_update_stock.png') no-repeat left center fixed !important;
+        background: url('/static/images/bg_update_stock.webp') no-repeat center center fixed !important;
         background-size: cover !important;
     }
     .form-container {
