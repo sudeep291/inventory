@@ -15,11 +15,9 @@ from flask_compress import Compress
 from PIL import Image
 import io
 import bleach
-from flask_talisman import Talisman
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 from cryptography.fernet import Fernet
+from werkzeug.middleware.proxy_fix import ProxyFix
 import logging
 
 # 🚀 Enterprise Service Logging: Stream tracebacks to the Render terminal for deep debugging
@@ -159,38 +157,37 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8)
 )
 
-# Hardware Permissions Lockdown: Selectively enabling professional features
-permissions_policy = {
-    'geolocation': '()',
-    'microphone': '()',
-    'camera': ('self',), # 📸 Refined: Using tuple format for absolute browser/proxy compatibility
-    'payment': '()'
-}
+# 🚀 ENTERPRISE MIDDLEWARE (Minimal & Zero-Crash for Render)
+# Use ProxyFix ONLY - it's the only middleware needed for Render
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Talisman Configuration: Elite Security Headers (Single initialization only)
-Talisman(
-    app,
-    content_security_policy=csp,
-    permissions_policy=permissions_policy,
-    force_https=False,
-    session_cookie_secure=False
-)
+# 🛡️ SECURITY HEADERS via after_request (Zero-Crash alternative to Talisman)
+@app.after_request
+def add_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'camera=(self), geolocation=(), microphone=(), payment=()'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+        "font-src 'self' https://fonts.gstatic.com; "
+        "img-src 'self' data: blob:; "
+        "connect-src 'self'"
+    )
+    return response
 
-# --- HIGH AVAILABILITY HEALTH PROBE (Registered before WSGI stack) ---
+# --- HIGH AVAILABILITY HEALTH PROBE ---
 @app.route('/ping')
 @csrf.exempt
 def enterprise_ping():
     return "SYSTEM_HEALTHY", 200
-# -----------------------------------------------------------------------
-
-# 🚀 ENTERPRISE MIDDLEWARE STACK: ProxyFix → WhiteNoise (Standard Render pattern)
-from whitenoise import WhiteNoise
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
-
+# ----------------------------------------
 
 if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER, exist_ok=True) 
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Global Error Handler for Debugging Render Deployment
 @app.errorhandler(Exception)
