@@ -562,11 +562,16 @@ def get_consolidated_analytics():
             WHERE p.is_active = TRUE
         """)
         sr = cursor.fetchone()
+        
+        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as ret_total FROM Sales WHERE status = 'RETURNED'")
+        rr = cursor.fetchone()
+        
         stock_summary = {
             "total_products": sr['total_variants'],
             "total_stock": sr['total_pairs'],
             "total_investment": sr['total_investment'],
-            "potential_revenue": sr['potential_revenue']
+            "potential_revenue": sr['potential_revenue'],
+            "total_returned": rr['ret_total']
         }
         
         cursor.execute("""

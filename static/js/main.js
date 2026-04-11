@@ -602,6 +602,7 @@ async function loadAdvancedAnalytics() {
         animateValue(document.getElementById('ovSales'), 0, data.weekly.pairs, 1500);
         animateValue(document.getElementById('ovRevenue'), 0, data.weekly.revenue, 1500, true);
         animateValue(document.getElementById('ovStock'), 0, data.stock.total_stock, 1500);
+        animateValue(document.getElementById('ovReturns'), 0, data.stock.total_returned, 1500);
 
         // Comparison Intelligence Logic
         const compRevEl = document.getElementById('compareRevenue');
