@@ -106,10 +106,10 @@
                 <div class="result-info">
                     <h3 id="updateResName" class="text-brand-primary"></h3>
                     
-                    <p class="text-brand-mrp" style="height:auto; padding:1.25rem 0;">
+                    <p class="text-brand-mrp" style="height:auto; padding:1.25rem 0; flex-wrap: wrap;">
                         <span class="text-brand-label lbl-mrp">Target MRP:</span>
-                        <span class="val" style="font-size:2rem !important; display:flex; align-items:center;">
-                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:800 !important; font-size:2.2rem !important; width:180px; outline:none; border-bottom:3px solid #2563eb" oninput="resyncUpdateSold()">
+                        <span class="val" style="font-size:2rem !important; display:flex; align-items:center; max-width: 100%;">
+                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:800 !important; font-size:2.2rem !important; width:min(180px, 100%); outline:none; border-bottom:3px solid #2563eb" oninput="resyncUpdateSold()">
                         </span>
                     </p>
                     

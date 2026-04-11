@@ -372,9 +372,9 @@ async function searchUpdateProduct() {
     const sizesContainer = document.getElementById('updateResSizes');
     sizesContainer.innerHTML = '';
     prod.sizes.forEach(s => {
-        const row = document.createElement('div');
         row.className = 'update-row';
         row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
+        row.style.flexWrap = 'wrap'; row.style.gap = '0.75rem';
         row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
@@ -422,8 +422,9 @@ function handleRowReturnUI(input) {
 function addNewUpdateSizeRow() {
     const container = document.getElementById('updateResSizes');
     const row = document.createElement('div');
-    row.className = 'update-row';
+    row.className = 'update-row animate-fade-in';
     row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
+    row.style.flexWrap = 'wrap'; row.style.gap = '0.75rem';
     row.style.background = '#eff6ff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #3b82f6';
     
     row.innerHTML = `

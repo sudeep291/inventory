@@ -36,6 +36,7 @@ body {
     background: var(--bg-base);
     min-height: 100vh;
     transition: background 0.3s ease, color 0.3s ease;
+    font-size: clamp(0.9rem, 1.5vw, 1rem); /* Fluid Base Font */
 }
 
 body.dark-theme {
@@ -170,7 +171,13 @@ body.dark-theme .exec-size-item {
 .animate-fade-up { animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
 /* Global Layout */
-.dashboard-layout { padding: 3rem 2rem; max-width: 1300px; margin: 0 auto; animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+.dashboard-layout { 
+    padding: clamp(1rem, 5vw, 3rem) clamp(1rem, 3vw, 2rem); 
+    max-width: 1300px; 
+    margin: 0 auto; 
+    animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
+    opacity: 0; 
+}
 
 /* Cards Common Architecture */
 .summary-card, .table-container, .form-container, .product-card, .result-card {
@@ -888,4 +895,41 @@ body.dark-theme .return-toggle.active {
     
     .dashboard-layout { padding: 1.5rem 1rem; }
     .hero-section { padding: 2rem 1.5rem; }
+    
+    /* Auto-Scaling for Result Metrics (Mobile UI Purpose) */
+    .premium-result-card p {
+        font-size: 1.15rem !important; /* Scaled down keys for mobile */
+        gap: 1rem;
+    }
+    .text-brand-label {
+        font-size: 0.95rem !important;
+        min-width: 110px;
+    }
+    .premium-result-card .val {
+        font-size: 1.25rem !important;
+    }
+    
+    /* Form Resizability */
+    .form-container {
+        padding: 1.5rem !important;
+        width: 98% !important;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 480px) {
+    .premium-result-card h3 {
+        font-size: 1.75rem !important; /* Scaled down article name */
+    }
+    .premium-result-card p {
+        flex-wrap: wrap; /* Defensive wrap to prevent cuts */
+        padding-bottom: 0.5rem;
+    }
+    .premium-result-card .val {
+        width: 100%;
+        margin-top: 0.25rem;
+    }
+    .header-left h1 {
+        font-size: 1.2rem;
+    }
 }
