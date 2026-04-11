@@ -167,34 +167,27 @@ permissions_policy = {
     'payment': '()'
 }
 
-# Talisman Configuration: Elite Security Headers
-talisman = Talisman(
-    content_security_policy=csp, 
+# Talisman Configuration: Elite Security Headers (Single initialization only)
+Talisman(
+    app,
+    content_security_policy=csp,
     permissions_policy=permissions_policy,
-    force_https=False, # 🛡️ ULTIMATE 502 FIX: Let Render Dashboard handle the redirect. 
+    force_https=False,
     session_cookie_secure=False
 )
 
-# 🚀 ENTERPRISE MIDDLEWARE STACK (Hardened for SaaS Reliability)
-from whitenoise import WhiteNoise
-
-# 1. Identity Layer (Outer): The primary tunnel that identifies HTTPS/IP
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
-
-# 2. Asset Layer (Middle): High-performance delivery for mobile APKs
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') 
-
-# 3. Security Layer (Inner): Hooks applied to the cleaned request context
-talisman.init_app(app) 
-
-# --- HIGH AVAILABILITY HEALTH PROBE ---
+# --- HIGH AVAILABILITY HEALTH PROBE (Registered before WSGI stack) ---
 @app.route('/ping')
 @csrf.exempt
 def enterprise_ping():
     return "SYSTEM_HEALTHY", 200
-# --------------------------------------
+# -----------------------------------------------------------------------
 
-Compress(app) # Global professional compression
+# 🚀 ENTERPRISE MIDDLEWARE STACK: ProxyFix → WhiteNoise (Standard Render pattern)
+from whitenoise import WhiteNoise
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
+
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True) 
