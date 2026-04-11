@@ -143,6 +143,7 @@ def analytics():
 
 @app.route('/api/stats')
 def api_stats():
+    global GLOBAL_ANALYTICS_CACHE
     # SWR Strategy for Stats
     if GLOBAL_ANALYTICS_CACHE and 'stats' in GLOBAL_ANALYTICS_CACHE:
         return jsonify(GLOBAL_ANALYTICS_CACHE['stats'])
@@ -193,7 +194,6 @@ def api_stats():
         "best_seller": best_seller
     }
     # Link to global cache
-    global GLOBAL_ANALYTICS_CACHE
     if 'stats' not in GLOBAL_ANALYTICS_CACHE: GLOBAL_ANALYTICS_CACHE['stats'] = {}
     GLOBAL_ANALYTICS_CACHE['stats'] = res
     save_cache_to_disk()
@@ -617,6 +617,7 @@ def sales_history():
 
 def get_consolidated_history():
     """Enterprise-level consolidated history engine"""
+    global GLOBAL_ANALYTICS_CACHE
     conn = get_db_connection()
     if not conn: return None
     try:
@@ -641,7 +642,6 @@ def get_consolidated_history():
             })
         
         # Integrate into global cache
-        global GLOBAL_ANALYTICS_CACHE
         if 'history' not in GLOBAL_ANALYTICS_CACHE: GLOBAL_ANALYTICS_CACHE['history'] = []
         GLOBAL_ANALYTICS_CACHE['history'] = sales
         save_cache_to_disk()
