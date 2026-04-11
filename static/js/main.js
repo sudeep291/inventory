@@ -79,29 +79,44 @@ async function loadReturnStats() {
    INDEX.HTML / DASHBOARD
 ================================== */
 async function loadWelcomeDashboard() {
-    const data = await fetchAPI('/api/stats');
-    if (!data) return;
+    const renderDashboardData = async () => {
+        // Fetch KPI stats
+        const data = await fetchAPI('/api/stats');
+        if (data) {
+            document.getElementById('dashCards').innerHTML = `
+                <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Products</h4><span class="val">${data.total_products}</span></a>
+                <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></a>
+                <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></a>
+                <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></a>
+            `;
+        }
 
-    document.getElementById('dashCards').innerHTML = `
-        <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Products</h4><span class="val">${data.total_products}</span></a>
-        <a href="/overview" class="summary-card" style="text-decoration:none"><h4>Total Global Stock</h4><span class="val">${data.total_stock}</span></a>
-        <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Low Stock Alerts</h4><span class="val text-loss">${data.low_stock_alerts}</span></a>
-        <a href="/analytics" class="summary-card" style="text-decoration:none"><h4>Best Seller</h4><span class="val text-profit" style="font-size:1.2rem">${data.best_seller}</span></a>
-    `;
-    
-    const salesData = await fetchAPI('/api/sales_advanced');
-    if (!salesData) return;
-        let lsHTML = '';
-        salesData.low_stock_list.forEach(item => {
-            lsHTML += `<tr>
-                <td><strong>${item.article}</strong></td>
-                <td>${item.name}</td>
-                <td>UK ${item.size}</td>
-                <td class="text-loss" style="font-weight:bold">${item.stock} left</td>
-            </tr>`;
-        });
-        document.getElementById('lowStockAlerts').innerHTML = lsHTML || '<tr><td colspan="4" class="text-profit">All stock is healthy!</td></tr>';
-    } 
+        // Fetch Low Stock Table
+        const salesData = await fetchAPI('/api/sales_advanced');
+        if (salesData) {
+            let lsHTML = '';
+            salesData.low_stock_list.forEach(item => {
+                lsHTML += `<tr>
+                    <td><strong>${item.article}</strong></td>
+                    <td>${item.name}</td>
+                    <td>UK ${item.size}</td>
+                    <td class="text-loss" style="font-weight:bold">${item.stock} left</td>
+                </tr>`;
+            });
+            document.getElementById('lowStockAlerts').innerHTML = lsHTML || '<tr><td colspan="4" class="text-profit">All stock is healthy!</td></tr>';
+        }
+    };
+
+    // Initial render
+    await renderDashboardData();
+
+    // ⚡ Enterprise Live Sync (Background Polling)
+    // Synchronizes the dashboard data silently every 30 seconds (Enterprise highly-available standard)
+    if (!window.dashSyncActive) {
+        window.dashSyncActive = true;
+        setInterval(renderDashboardData, 30000); 
+    }
+} 
 
 
 /* ==================================
