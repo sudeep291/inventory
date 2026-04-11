@@ -8,20 +8,27 @@
         background-size: cover !important;
     }
     .form-container {
-        background: rgba(15, 23, 42, 0.6) !important;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
-        max-width: 700px !important; /* Adjusted for tighter focus */
+        background: rgba(15, 23, 42, 0.45) !important; /* Premium Semi-Transparent */
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        max-width: 850px !important; /* Expansive wide-screen focus */
     }
     .form-container h2, .form-container p, .form-container label, .form-container strong {
         color: #ffffff !important;
     }
-    #updateResName { color: #ef4444 !important; } /* Dynamic Override */
-    .form-container .result-card {
-        background: rgba(0,0,0,0.2) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
+    #updateResName { 
+        color: #ff4d4d !important; /* Solid Luminous Red */
+        font-size: 3.5rem !important;
+        font-weight: 950 !important;
+        text-shadow: none !important; /* Removed hazy shadow */
+        letter-spacing: -1.5px;
+    }
+    .premium-result-card {
+        background: rgba(255, 255, 255, 0.03) !important; /* Glass Inner Card */
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(4px);
     }
     /* Premium High-Contrast Luminous Overrides */
     .premium-result-card h3 { 
@@ -30,14 +37,14 @@
         margin-bottom: 0.75rem !important; 
     }
     .premium-result-card p { 
-        font-size: 1.35rem !important; 
-        color: #475569 !important;
-        margin-bottom: 1rem !important; 
+        font-size: 1.4rem !important; 
+        color: #e2e8f0 !important; /* Lighter color for glass contrast */
+        margin-bottom: 1.25rem !important; 
         display: flex;
-        justify-content: space-between; /* Restored wide layout */
+        justify-content: space-between; /* Restored wide expansive logic */
         align-items: center;
-        border-bottom: 1px dashed #e2e8f0;
-        padding-bottom: 0.75rem;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding-bottom: 1rem;
     }
     .premium-result-card .val {
         font-weight: 800 !important;
