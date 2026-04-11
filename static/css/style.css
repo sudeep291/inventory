@@ -111,7 +111,7 @@ body.dark-theme .exec-size-item {
 /* Header/Navbar (Dark SaaS) */
 .app-header {
     background: #111827;
-    padding: 0.75rem 2rem;
+    padding: 0.5rem 2rem; /* Reduced from 0.75rem */
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -189,7 +189,7 @@ body.dark-theme .exec-size-item {
 
 /* Global Layout */
 .dashboard-layout { 
-    padding: clamp(1rem, 5vw, 3rem) clamp(1rem, 3vw, 2rem); 
+    padding: clamp(0.5rem, 3vw, 1.5rem) clamp(1rem, 3vw, 2rem); /* Significantly tighter vertical padding */
     max-width: 1300px; 
     margin: 0 auto; 
     animation: fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; 
@@ -911,8 +911,8 @@ body.dark-theme .return-toggle.active {
     .vision-android { display: block; }
     
     .app-header {
-        padding: 0.75rem 1rem;
-        padding-top: max(0.75rem, env(safe-area-inset-top)); /* Support for Android Notches */
+        padding: 0.4rem 0.8rem; /* Ultra-compact for mobile */
+        padding-top: max(0.4rem, env(safe-area-inset-top)); /* Support for Android Notches */
     }
     
     .mobile-theme-btn {
