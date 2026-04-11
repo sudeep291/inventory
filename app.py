@@ -20,6 +20,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
 from cryptography.fernet import Fernet
+import logging
+
+# 🚀 Enterprise Service Logging: Stream tracebacks to the Render terminal for deep debugging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -147,23 +152,31 @@ permissions_policy = {
     'payment': '()'
 }
 
-# Talisman Refinement: High-security headers + Feature Lockdown
+# Talisman Configuration: Elite Security Headers
+# 🛡️ Optimized Initialization: Using 'init_app' to stack with ProxyFix correctly
 talisman = Talisman(
-    app, 
     content_security_policy=csp, 
     permissions_policy=permissions_policy,
-    force_https=IS_PROD, # Only force HTTPS in production
+    force_https=IS_PROD, 
     session_cookie_secure=IS_PROD
 )
 
-# 🚀 PERFORMANCE MIDDLEWARE (SaaS Optimization)
+# 🚀 ENTERPRISE MIDDLEWARE STACK (Hardened for SaaS Reliability)
 from whitenoise import WhiteNoise
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1) # 🛡️ Enterprise Iron-Tunnel Identity
-Compress(app) # Global professional compression
+
+# 1. Identity Layer (Outer): The primary tunnel that identifies HTTPS/IP
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+# 2. Asset Layer (Middle): High-performance delivery for mobile APKs
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') 
 
+# 3. Security Layer (Inner): Hooks applied to the cleaned request context
+talisman.init_app(app) 
+
+Compress(app) # Global professional compression
+
 if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True) 
 
 # Global Error Handler for Debugging Render Deployment
 @app.errorhandler(Exception)
@@ -929,15 +942,16 @@ scheduler.add_job(func=enterprise_heartbeat, trigger="interval", minutes=3)
 # Safe Startup Block (Professional Resilience)
 def startup_checks():
     try:
-        init_db()
-        print("Professional Initialization: DB migrated successfully.")
-        # Trigger immediate cache warm-up
-        enterprise_heartbeat()
-        if not scheduler.running:
-            scheduler.start()
-            print("Professional Initialization: Background Scheduler active.")
+        with app.app_context():
+            init_db()
+            logger.info("Professional Initialization: DB migrated successfully.")
+            # Trigger immediate cache warm-up
+            enterprise_heartbeat()
+            if not scheduler.running:
+                scheduler.start()
+                logger.info("Professional Initialization: Background Scheduler active.")
     except Exception as e:
-        print(f"Startup Logic Error: {e}")
+        logger.error(f"FATAL STARTUP LOGIC ERROR: {e}", exc_info=True)
 
 # Use daemon thread to initialize in background so first request wins immediately
 import threading
