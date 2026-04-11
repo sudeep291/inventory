@@ -115,9 +115,20 @@ app.config.update(
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 Compress(app)
 
-# 🛡️ SECURITY HEADERS via after_request (Zero-Crash alternative to Talisman)
+# 🚀 SPEED + SECURITY via after_request
 @app.after_request
 def add_security_headers(response):
+    # ⚡ ENTERPRISE ASSET CACHE: Static files cached 7 days — zero re-downloads on navigation
+    if request.path.startswith('/static/'):
+        response.headers['Cache-Control'] = 'public, max-age=604800, stale-while-revalidate=86400'
+    elif request.path.startswith('/api/'):
+        # API responses: always fresh
+        response.headers['Cache-Control'] = 'no-store'
+    else:
+        # HTML pages: revalidate on revisit but allow instant back/forward
+        response.headers['Cache-Control'] = 'no-cache'
+
+    # 🛡️ Security headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
