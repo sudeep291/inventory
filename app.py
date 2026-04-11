@@ -112,8 +112,8 @@ app.config.update(
 )
 
 # 🚀 ENTERPRISE MIDDLEWARE (Minimal & Zero-Crash for Render)
-# Use ProxyFix ONLY - it's the only middleware needed for Render
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+Compress(app)
 
 # 🛡️ SECURITY HEADERS via after_request (Zero-Crash alternative to Talisman)
 @app.after_request
