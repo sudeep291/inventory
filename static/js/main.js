@@ -352,7 +352,12 @@ async function searchUpdateProduct() {
     resName.style.color = '#ef4444'; // MNC Professional: Luminous Red
     resName.style.fontSize = '2.5rem';
     resName.style.fontWeight = '900';
-    document.getElementById('updateResCP').textContent = toMoney(prod.mrp);
+    // Populate Dynamic MRP field (Luminous Input)
+    const mrpInput = document.getElementById('updateResCP');
+    mrpInput.value = prod.mrp;
+    mrpInput.dataset.originalMrp = prod.mrp;
+    mrpInput.dataset.discount = prod.default_discount || 0;
+    
     document.getElementById('updateResSold').textContent = toMoney(prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100)));
     
     const updateImg = document.getElementById('updateResImg');
@@ -481,9 +486,10 @@ function previewBatchUpdate() {
 }
 
 async function executeBatchUpdate() {
+    const newMrpVal = document.getElementById('updateResCP').value;
     const data = await fetchAPI('/api/stock/adjust_batch', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates: batchPayload })
+        body: JSON.stringify({ updates: batchPayload, new_mrp: parseFloat(newMrpVal) })
     });
     if (data && data.success) {
         document.getElementById('batchConfirmModal').style.display = 'none';
@@ -815,4 +821,23 @@ if ('serviceWorker' in navigator) {
 function toggleMobileMenu() {
     const menu = document.getElementById('mobileMenu');
     if (menu) menu.classList.toggle('active');
+}
+
+
+/**
+ * Enterprise Pricing Engine: Calculates real-time Selling Price based on MRP and Article Strategy.
+ */
+function resyncUpdateSold() {
+    const mrpInput = document.getElementById('updateResCP');
+    const soldSpan = document.getElementById('updateResSold');
+    
+    const mrp = parseFloat(mrpInput.value) || 0;
+    const disc = parseFloat(mrpInput.dataset.discount) || 0;
+    
+    if (mrp > 0) {
+        const newSold = mrp - (mrp * disc / 100);
+        soldSpan.textContent = '?' + newSold.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    } else {
+        soldSpan.textContent = '?0.00';
+    }
 }

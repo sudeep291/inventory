@@ -106,14 +106,16 @@
                 <div class="result-info">
                     <h3 id="updateResName" class="text-brand-primary"></h3>
                     
-                    <p class="text-brand-mrp">
+                    <p class="text-brand-mrp" style="height:auto; padding:1.25rem 0;">
                         <span class="text-brand-label lbl-mrp">Target MRP:</span>
-                        <span class="val">₹<span id="updateResCP"></span></span>
+                        <span class="val" style="font-size:2rem !important; display:flex; align-items:center;">
+                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:800 !important; font-size:2.2rem !important; width:180px; outline:none; border-bottom:3px solid #2563eb" oninput="resyncUpdateSold()">
+                        </span>
                     </p>
                     
                     <p class="text-brand-success" style="margin-bottom:1.5rem">
                         <span class="text-brand-label lbl-sold">Target Sold:</span>
-                        <span class="val">₹<span id="updateResSold"></span></span>
+                        <span class="val" style="font-size:2.5rem !important; color:#059669 !important; font-weight:950 !important;"><span id="updateResSold"></span></span>
                     </p>
                     
                     <label class="text-brand-label lbl-input" style="display:block; margin-bottom:1rem;">Input Quantities to Add</label>
