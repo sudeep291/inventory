@@ -21,8 +21,8 @@ def get_connection_pool():
             database_url = database_url.replace("postgres://", "postgresql://", 1)
         
         try:
-            # Min 1, Max 5 connections (Throttled for Render stability to prevent pool exhaustion)
-            _db_pool = pool.ThreadedConnectionPool(1, 5, database_url, sslmode='require', cursor_factory=RealDictCursor)
+            # Min 1, Max 10 connections (Slightly relaxed for better parallel support)
+            _db_pool = pool.ThreadedConnectionPool(1, 10, database_url, sslmode='require', cursor_factory=RealDictCursor)
             print("DATABASE POOL: Initialized successfully.")
         except Exception as e:
             print(f"DATABASE POOL ERROR: {e}")

@@ -339,7 +339,11 @@ async function searchUpdateProduct() {
     }
     
     currentUpdateProductId = prod.id;
-    document.getElementById('updateResName').textContent = prod.name;
+    const resName = document.getElementById('updateResName');
+    resName.textContent = prod.name;
+    resName.style.color = '#ef4444'; // MNC Professional: Luminous Red
+    resName.style.fontSize = '2.5rem';
+    resName.style.fontWeight = '900';
     document.getElementById('updateResCP').textContent = toMoney(prod.mrp);
     document.getElementById('updateResSold').textContent = toMoney(prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100)));
     
@@ -364,7 +368,7 @@ async function searchUpdateProduct() {
             <div style="display:flex; align-items:center; gap:1rem;">
                 <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
-                    <span class="size-badge-num">${s.size}</span>
+                    <span class="size-badge-num">R | UK: ${s.size}</span>
                 </label>
                 <div style="display:flex; flex-direction:column; gap:0.1rem;">
                     <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>

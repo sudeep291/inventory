@@ -806,29 +806,25 @@ body.dark-theme .bottom-nav {
     justify-content: center;
     cursor: pointer;
     user-select: none;
-    width: 52px;
+    width: 120px;
     height: 52px;
-    border-radius: 10px;
+    border-radius: 12px;
     border: 2px solid #e2e8f0;
     background: #f1f5f9;
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     flex-shrink: 0;
     position: relative;
+    font-size: 0.9rem;
+    font-weight: 800;
 }
 .size-return-badge input { display: none; }
 .size-badge-num {
-    font-size: 1.15rem;
-    font-weight: 800;
     color: #334155;
-    line-height: 1;
     transition: all 0.2s;
 }
 .size-return-badge:hover {
     border-color: #f87171;
     background: #fff1f2;
-}
-.size-return-badge:hover .size-badge-num {
-    color: #ef4444;
 }
 .size-return-badge.active {
     background: #fee2e2;
