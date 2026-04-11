@@ -360,8 +360,17 @@ async function searchUpdateProduct() {
         row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
-            <div><strong style="margin-right:1rem; color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> <span style="color:#334155; font-size:0.95rem; font-weight:700">Current: ${s.stock}</span></div>
-            <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-family:'Inter'; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; validateBatchBtn()">
+            <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                <div><strong style="margin-right:1rem; color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> <span style="color:#334155; font-size:0.95rem; font-weight:700">Stock: ${s.stock}</span></div>
+                <label class="return-toggle" data-sizeid="${s.id}">
+                    <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); validateBatchBtn()">
+                    <span style="font-size:0.75rem; font-weight:800;">🔄 Mark as Return</span>
+                </label>
+            </div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
+                <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100))}" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-family:'Inter'; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; handleRowReturnUI(this); validateBatchBtn()">
+            </div>
         `;
         sizesContainer.appendChild(row);
     });
@@ -372,6 +381,18 @@ async function searchUpdateProduct() {
     container.classList.add('animate-fade-up');
     
     validateBatchBtn();
+}
+
+function handleRowReturnUI(input) {
+    const row = input.closest('div').parentElement;
+    const priceInput = row.querySelector('.batch-update-price');
+    const returnCheck = row.querySelector('.is-return-check');
+    if (input.value > 0 && returnCheck.checked) {
+        priceInput.style.display = 'block';
+        if (!priceInput.value) priceInput.value = parseFloat(input.dataset.targetsp).toFixed(2);
+    } else {
+        priceInput.style.display = 'none';
+    }
 }
 
 function addNewUpdateSizeRow() {
@@ -417,15 +438,19 @@ function previewBatchUpdate() {
     inputs.forEach(i => {
         const val = parseInt(i.value);
         if(val > 0) {
+            const row = i.closest('div').parentElement;
+            const isReturn = row.querySelector('.is-return-check')?.checked || false;
+            const refundPx = row.querySelector('.batch-update-price')?.value || 0;
+
             if(i.classList.contains('is-new-size')) {
-                const sizeInput = i.parentElement.parentElement.querySelector('.new-size-val');
+                const sizeInput = row.querySelector('.new-size-val');
                 if(!sizeInput || sizeInput.value.trim() === '') return;
                 const sizeVal = sizeInput.value.trim();
-                batchPayload.push({is_new: true, product_id: currentUpdateProductId, size: sizeVal, amount: val});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span><span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;">NEW</span>Size UK ${sizeVal}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
+                batchPayload.push({is_new: true, product_id: currentUpdateProductId, size: sizeVal, amount: val, is_return: isReturn, price: refundPx});
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;">NEW</span>Size UK ${sizeVal}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             } else {
-                batchPayload.push({size_id: i.dataset.sizeid, amount: val});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>Size UK ${i.dataset.sizename}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
+                batchPayload.push({size_id: i.dataset.sizeid, amount: val, is_return: isReturn, price: refundPx});
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size UK ${i.dataset.sizename}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             }
         }
     });

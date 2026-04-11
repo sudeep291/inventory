@@ -393,6 +393,8 @@ def api_adjust_stock_batch():
             amount = safe_int(up.get('amount'))
             if amount <= 0: continue
             
+            is_return = up.get('is_return', False)
+            
             if up.get('is_new'):
                 product_id = up.get('product_id')
                 size = safe_float(up.get('size'))
@@ -402,10 +404,27 @@ def api_adjust_stock_batch():
                     INSERT INTO ProductSizes (product_id, size, stock)
                     VALUES (%s, %s, %s)
                     ON CONFLICT (product_id, size) DO UPDATE SET stock = ProductSizes.stock + EXCLUDED.stock
+                    RETURNING id
                 """, (product_id, size, amount))
+                res = cursor.fetchone()
+                # If it's a return of a new size (rare but possible)
+                if is_return:
+                    refund_px = safe_float(up.get('price'), 0.0)
+                    cursor.execute("""
+                        INSERT INTO Sales (product_id, size, quantity, sold_price, status)
+                        VALUES (%s, %s, %s, %s, 'RETURN')
+                    """, (product_id, size, amount, refund_px))
             else:
                 size_id = up.get('size_id')
-                cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s", (amount, size_id))
+                cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s RETURNING product_id, size", (amount, size_id))
+                row = cursor.fetchone()
+                
+                if is_return and row:
+                    refund_px = safe_float(up.get('price'), 0.0)
+                    cursor.execute("""
+                        INSERT INTO Sales (product_id, size, quantity, sold_price, status)
+                        VALUES (%s, %s, %s, %s, 'RETURN')
+                    """, (row['product_id'], row['size'], amount, refund_px))
         
         conn.commit()
         return jsonify({"success": True})
@@ -484,33 +503,33 @@ def get_consolidated_analytics():
     if not conn: return None
     try:
         cursor = conn.cursor()
-        # Daily Analytics
+        # Daily Analytics (Net Calculation: Sales - Returns)
         cursor.execute("""
             SELECT 
-                COALESCE(SUM(s.quantity), 0) as pairs_today,
-                COUNT(DISTINCT s.product_id) as unique_pairs_today,
-                ROUND(COALESCE(SUM(s.sold_price * s.quantity), 0), 2) as rev_today,
-                ROUND(COALESCE(SUM(CASE WHEN s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0), 2) as gains_today,
-                ROUND(COALESCE(SUM(CASE WHEN s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0), 2) as losses_today,
-                ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as net_surplus_today
+                COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_today,
+                COUNT(DISTINCT CASE WHEN s.status = 'SALE' THEN s.product_id END) as unique_pairs_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 0), 2) as rev_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price > p.selling_price THEN (s.sold_price - p.selling_price) * s.quantity ELSE 0 END), 0), 2) as gains_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' AND s.sold_price < p.selling_price THEN (p.selling_price - s.sold_price) * s.quantity ELSE 0 END), 0), 2) as losses_today,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as net_surplus_today
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE DATE(s.sale_date) = CURRENT_DATE
         """)
         dr = cursor.fetchone()
         daily = {
-            "pairs": dr['pairs_today'], 
+            "pairs": float(dr['pairs_today']), 
             "unique_pairs": dr['unique_pairs_today'], 
-            "revenue": dr['rev_today'], 
-            "profit": max(0, dr['net_surplus_today']),
-            "surplus_loss": dr['net_surplus_today']
+            "revenue": float(dr['rev_today']), 
+            "profit": max(0, float(dr['net_surplus_today'])),
+            "surplus_loss": float(dr['net_surplus_today'])
         }
         
-        # Weekly Analytics
+        # Weekly Analytics (Net Calculation: Sales - Returns)
         cursor.execute("""
             SELECT 
-                COALESCE(SUM(s.quantity), 0) as pairs_week,
-                ROUND(COALESCE(SUM(s.sold_price * s.quantity), 0), 2) as rev_week,
-                ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as net_surplus_week
+                COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END), 0) as pairs_week,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 0), 2) as rev_week,
+                ROUND(COALESCE(SUM(CASE WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as net_surplus_week
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE s.sale_date >= CURRENT_DATE - INTERVAL '6 days'
         """)
@@ -563,9 +582,9 @@ def get_consolidated_analytics():
         
         cursor.execute("""
             SELECT p.article_no, p.name, 
-                   SUM(s.quantity) AS total_qty, 
-                   ROUND(SUM(s.sold_price * s.quantity), 2) AS revenue, 
-                   ROUND(SUM((s.sold_price - p.selling_price) * s.quantity), 2) AS article_surplus
+                   SUM(CASE WHEN s.status = 'SALE' THEN s.quantity ELSE -s.quantity END) AS total_qty, 
+                   ROUND(SUM(CASE WHEN s.status = 'SALE' THEN s.sold_price * s.quantity ELSE -(s.sold_price * s.quantity) END), 2) AS revenue, 
+                   ROUND(SUM(CASE WHEN s.status = 'SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 2) AS article_surplus
             FROM Sales s JOIN Products p ON s.product_id = p.id
             GROUP BY p.article_no, p.name
         """)
@@ -575,7 +594,7 @@ def get_consolidated_analytics():
         ]
         
         cursor.execute("""
-            SELECT DATE(sale_date) as d, COALESCE(SUM(quantity), 0) as qty
+            SELECT DATE(sale_date) as d, COALESCE(SUM(CASE WHEN status = 'SALE' THEN quantity ELSE -quantity END), 0) as qty
             FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '6 days'
             GROUP BY DATE(sale_date) ORDER BY d
         """)
@@ -624,7 +643,7 @@ def get_consolidated_history():
         cursor = conn.cursor()
         cursor.execute("""
             SELECT s.id, s.sale_date, p.article_no, p.name, s.size, s.quantity, 
-                   p.mrp, s.sold_price, s.discount_applied
+                   p.mrp, s.sold_price, s.discount_applied, s.status
             FROM Sales s
             JOIN Products p ON s.product_id = p.id
             ORDER BY s.sale_date DESC
@@ -638,7 +657,8 @@ def get_consolidated_history():
                 "article": r['article_no'], "name": r['name'],
                 "size": r['size'], "qty": r['quantity'],
                 "mrp": r['mrp'], "sold_price": r['sold_price'],
-                "discount": r['discount_applied']
+                "discount": r['discount_applied'],
+                "status": r['status']
             })
         
         # Integrate into global cache

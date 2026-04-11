@@ -799,6 +799,50 @@ body.dark-theme .bottom-nav {
 .badge-compare.down { color: #fb7185; }
 .badge-compare.flat { color: #94a3b8; }
 
+/* Product Return Styling */
+.return-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #f1f5f9;
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid #cbd5e1;
+    user-select: none;
+    width: fit-content;
+}
+.return-toggle.active {
+    background: #eff6ff;
+    border-color: #3b82f6;
+    color: #1d4ed8;
+}
+.return-toggle input { display: none; }
+
+.status-badge-returned {
+    background: #fee2e2;
+    color: #dc2626;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    border: 1px solid #fecaca;
+    display: inline-block;
+}
+
+body.dark-theme .return-toggle {
+    background: #1e293b;
+    border-color: #334155;
+    color: #94a3b8;
+}
+body.dark-theme .return-toggle.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: #3b82f6;
+    color: #60a5fa;
+}
+
 .vision-windows { display: block; }
 .vision-android { display: none; }
 

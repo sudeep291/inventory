@@ -94,8 +94,12 @@ def init_db():
             quantity INT,
             sale_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             sold_price DECIMAL(10,2) NULL,
-            discount_applied DECIMAL(5,2) NULL
+            discount_applied DECIMAL(5,2) NULL,
+            status VARCHAR(20) DEFAULT 'SALE'
         )
+        """,
+        """
+        ALTER TABLE Sales ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'SALE'
         """,
         """
         CREATE TABLE IF NOT EXISTS WeeklyMetrics (
