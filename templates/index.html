@@ -12,17 +12,19 @@
     margin: 4rem 0 5rem 0;
     border-radius: var(--radius);
     overflow: hidden;
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
 }
+/* ⬇️ Dim the actual background images — was over-bright */
 .bg-slide {
     position: absolute;
     top: 0; left: 0; width: 100%; height: 100%;
     background-size: cover;
     background-position: center;
     opacity: 0;
-    animation: bgFade 9s infinite; /* Accelerated for high energy */
+    animation: bgFade 9s infinite;
     z-index: 0;
+    filter: brightness(0.45) saturate(1.1); /* ← KEY FIX: dims image by 55% */
 }
 .bg-slide:nth-child(1) { animation-delay: 0s; }
 .bg-slide:nth-child(2) { animation-delay: 3s; }
@@ -36,16 +38,18 @@
     100% { opacity: 0; transform: scale(1.05); }
 }
 
-body[data-theme='dark'] .welcome-overlay {
-    background: radial-gradient(circle at center, rgba(15, 23, 42, 0.85) 0%, rgba(15, 23, 42, 0.4) 60%, rgba(15, 23, 42, 0.1) 100%) !important;
-}
+/* Dark cinematic gradient overlay — replaces the white wash */
 .welcome-overlay {
     position: relative;
     z-index: 2;
     padding: 5rem 2rem;
     text-align: center;
-    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0.5) 60%, rgba(255, 255, 255, 0.1) 100%);
-    /* Removed heavy backdrop blur so HD images are visible */
+    background: linear-gradient(
+        to bottom,
+        rgba(0,0,0,0.1) 0%,
+        rgba(0,0,0,0.05) 50%,
+        rgba(0,0,0,0.2) 100%
+    );
 }
 </style>
 
@@ -55,10 +59,10 @@ body[data-theme='dark'] .welcome-overlay {
         <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_3.webp');"></div>
         
         <div class="welcome-overlay">
-            <h1 style="font-size: 4rem; font-weight: 800; color: var(--text-primary); letter-spacing: -1px; text-shadow: 0px 4px 10px rgba(0,0,0,0.1); margin-bottom: 1rem; line-height:1.2;">
-                Welcome <br> <span style="color: var(--primary);">Mr. Prathap Avula</span>
+            <h1 style="font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; color: #ffffff; letter-spacing: -1px; text-shadow: 0 2px 20px rgba(0,0,0,0.6); margin-bottom: 1rem; line-height:1.2;">
+                Welcome <br> <span style="background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Mr. Prathap Avula</span>
             </h1>
-            <p style="font-size: 1.25rem; color: var(--text-secondary); font-weight: 600;">
+            <p style="font-size: 1.1rem; color: rgba(255,255,255,0.8); font-weight: 500; text-shadow: 0 1px 8px rgba(0,0,0,0.5); letter-spacing: 0.3px;">
                 to Sri Vijayalakshmi Footwear Inventory System
             </p>
         </div>
