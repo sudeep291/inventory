@@ -35,6 +35,14 @@ function playSuccessSequence(containerId, message, callback) {
 
 // Enterprise Global Fetch Wrapper (Zero-Silence Infrastructure)
 async function fetchAPI(url, options = {}) {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken) {
+        options.headers = {
+            ...options.headers,
+            'X-CSRFToken': csrfToken
+        };
+    }
+    
     try {
         const response = await fetch(url, options);
         const data = await response.json();

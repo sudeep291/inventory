@@ -11,13 +11,13 @@ from werkzeug.utils import secure_filename
 from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_compress import Compress
-from whitenoise import WhiteNoise
 from PIL import Image
 import io
 import bleach
 from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_wtf.csrf import CSRFProtect
 
 load_dotenv()
 
@@ -103,22 +103,36 @@ csp = {
     'connect-src': '\'self\''
 }
 
-# Talisman: Enforces HTTPS, HSTS, and XSS Protection Headers
-talisman = Talisman(app, content_security_policy=csp, force_https=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Limiter: Prevents automated bot and "virus" brute-force attacks
-limiter = Limiter(
-    get_remote_address,
-    app=app,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://"
+# 🛡️ ELITE DEFENSIVE SHIELDING (SecOps Level 2)
+# CSRF Protection: Forces every command to have a unique cryptographic token
+csrf = CSRFProtect(app)
+
+# Session Hardening: Prevents hackers from stealing or leaking login sessions
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SECURE=True, # Forces secure transfer in production
+    SESSION_COOKIE_SAMESITE='Lax',
+    PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8) # Auto-logout for security
 )
 
-Compress(app) # Global professional compression for faster UI
-app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') # Professional asset delivery
-OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
-UPLOAD_FOLDER = os.path.join('static', 'images')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# Hardware Permissions Lockdown: Disables unused phone features in the APK
+permissions_policy = {
+    'geolocation': '()',
+    'microphone': '()',
+    'camera': '()',
+    'payment': '()'
+}
+
+# Talisman Refinement: High-security headers + Feature Lockdown
+talisman = Talisman(
+    app, 
+    content_security_policy=csp, 
+    permissions_policy=permissions_policy,
+    force_https=True,
+    session_cookie_secure=True
+)
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
