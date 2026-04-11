@@ -8,6 +8,7 @@ import json
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_compress import Compress
@@ -109,14 +110,14 @@ app.json = CustomJSONProvider(app)
 app.secret_key = os.environ.get('SECRET_KEY', 'enterprise_super_secret_key_999')
 
 # 🛡️ GLOBAL SECURITY HARDENING (SecOps)
-# Content Security Policy: Allows internal scripts, styles, and Google Fonts
+# Content Security Policy: Refined for APK Compatibility
 csp = {
     'default-src': '\'self\'',
     'script-src': ['\'self\'', '\'unsafe-inline\'', 'https://cdn.jsdelivr.net'],
     'style-src': ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
     'font-src': ['\'self\'', 'https://fonts.gstatic.com'],
-    'img-src': ['\'self\'', 'data:', 'https://via.placeholder.com'],
-    'connect-src': '\'self\''
+    'img-src': ['\'self\'', 'data:', 'blob:', 'https://via.placeholder.com'], # Added blob: for APK charts
+    'connect-src': ['\'self\'', 'data:', 'blob:'] # Added blob: for analytic streaming
 }
 
 # Enterprise Global Variables (Infrastructure Layer)
@@ -157,6 +158,7 @@ talisman = Talisman(
 
 # 🚀 PERFORMANCE MIDDLEWARE (SaaS Optimization)
 from whitenoise import WhiteNoise
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1) # 🛡️ Enterprise Iron-Tunnel Identity
 Compress(app) # Global professional compression
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') 
 
