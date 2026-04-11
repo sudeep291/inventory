@@ -769,8 +769,33 @@ async function loadAdvancedAnalytics() {
                 animation: { duration: 1500, easing: 'easeOutQuart' }
             }
         });
+        
+        loadSizeHeatmap();
 
     } 
+
+async function loadSizeHeatmap() {
+    const grid = document.getElementById('sizeHeatmapGrid');
+    if (!grid) return;
+    
+    const res = await fetchAPI('/api/analytics/heatmap');
+    if (!res || !res.success || !res.data) {
+        grid.innerHTML = '<span style="color:#0f766e; font-size:0.9rem;">No heatmap data available.</span>';
+        return;
+    }
+    
+    let html = '';
+    res.data.forEach(item => {
+        const hClass = `heat-${item.heat_level}`;
+        html += `
+        <div class="heatmap-box ${hClass}">
+            <div class="sz">UK ${item.size}</div>
+            <div class="stats">${item.total_sold} Sold <br> ${item.current_stock} Left</div>
+        </div>`;
+    });
+    
+    grid.innerHTML = html || '<span style="color:#0f766e; font-size:0.9rem;">No sizes detected in database.</span>';
+} 
 
 /* ==================================
    IMAGE LIGHTBOX LOGIC

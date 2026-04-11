@@ -139,7 +139,24 @@
         </div>
     </section>
 
-    <!-- 5. STOCK OVERVIEW -->
+    <!-- 5. SIZE HEATMAP (BUSINESS INTELLIGENCE) -->
+    <section class="analytics-section" style="background: linear-gradient(135deg, rgba(8,145,178,0.05), rgba(13,148,136,0.15)); border: 1px solid rgba(8,145,178,0.2);">
+        <h2 class="analytic-title" style="color:#115e59">Size Performance Heatmap</h2>
+        <div class="glass-grid">
+            <div class="glass-card" style="grid-column: 1 / -1;">
+                <p style="color:#0f766e; font-size:0.9rem; margin-bottom:1rem; display:flex; gap:1rem;">
+                    <span><span class="heat-cold" style="padding:0.2rem 0.5rem; border-radius:4px; color:white;">RED</span> = Dead Stock</span>
+                    <span><span class="heat-warm" style="padding:0.2rem 0.5rem; border-radius:4px; color:black;">YELLOW</span> = Steady</span>
+                    <span><span class="heat-hot" style="padding:0.2rem 0.5rem; border-radius:4px; color:white;">GREEN</span> = Fast Moving</span>
+                </p>
+                <div id="sizeHeatmapGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:1rem;">
+                    <!-- JS Injects Heatmap Squares Here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. STOCK OVERVIEW -->
     <section class="analytics-section grad-cyan">
         <h2 class="analytic-title">Global Stock Status</h2>
         <div class="glass-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
@@ -159,7 +176,6 @@
             </div>
         </div>
     </section>
-
 </div>
 {% endblock %}
 {% block scripts %}

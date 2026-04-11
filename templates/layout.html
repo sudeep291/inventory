@@ -28,12 +28,19 @@
         </div>
         <nav class="header-right">
             <a href="/" class="btn outline {% if active_page == 'dashboard' %}active{% endif %}">Dashboard</a>
+            {% if session.get('role') == 'owner' %}
             <a href="/overview" class="btn outline {% if active_page == 'overview' %}active{% endif %}">Overview</a>
+            {% endif %}
+            
             <a href="/add_product" class="btn outline {% if active_page == 'add' %}active{% endif %}">Add</a>
             <a href="/inventory" class="btn outline {% if active_page == 'sell' %}active{% endif %}">Sell</a>
             <a href="/update_stock" class="btn outline {% if active_page == 'update' %}active{% endif %}">Update</a>
             <a href="/sales_history" class="btn outline {% if active_page == 'sales_history' %}active{% endif %}">History</a>
+            
+            {% if session.get('role') == 'owner' %}
             <a href="/analytics" class="btn outline {% if active_page == 'analytics' %}active{% endif %}">Analytics</a>
+            {% endif %}
+            
             <a href="/logout" class="btn outline" style="color:var(--loss); font-weight:700;">Logout</a>
             
             <button class="btn outline" onclick="toggleTheme()" style="padding:0.4rem; display:flex; align-items:center; justify-content:center; border-radius:50%; width:34px; height:34px; margin-left:0.5rem; background:rgba(255,255,255,0.05);" title="Toggle Theme">
@@ -52,10 +59,12 @@
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11 9H9V2H7v7H5L8 12v10h2V12l3-3zM18 5V2h-2v3h-3v2h3v3h2V7h3V5h-3z"/></svg>
             <span>Sell</span>
         </a>
+        {% if session.get('role') == 'owner' %}
         <a href="/overview" class="nav-item {% if active_page == 'overview' %}active{% endif %}">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>
             <span>Overview</span>
         </a>
+        {% endif %}
         <a href="/sales_history" class="nav-item {% if active_page == 'sales_history' %}active{% endif %}">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
             <span>History</span>

@@ -966,3 +966,25 @@ body.dark-theme .return-toggle.active {
     }
 }
 
+
+/* ==================================
+   SIZE HEATMAP CLASSES
+================================== */
+.heat-hot { background-color: #16a34a !important; color: white !important; font-weight: bold; border: 2px solid #14532d !important; box-shadow: 0 4px 10px rgba(22, 163, 74, 0.4); }
+.heat-warm { background-color: #fde047 !important; color: #854d0e !important; font-weight: bold; border: 2px solid #ca8a04 !important; }
+.heat-cold { background-color: #ef4444 !important; color: white !important; font-weight: bold; border: 2px solid #7f1d1d !important; opacity: 0.85; }
+
+.heatmap-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 8px;
+    transition: transform 0.2s ease;
+}
+.heatmap-box:hover {
+    transform: scale(1.05);
+}
+.heatmap-box .sz { font-size: 1.5rem; font-weight: 900; margin-bottom: 0.25rem; }
+.heatmap-box .stats { font-size: 0.85rem; opacity: 0.9; }

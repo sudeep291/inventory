@@ -89,9 +89,20 @@
         
         <div class="search-section" style="text-align:left; margin-bottom:2rem;">
             <label style="font-weight:600;display:block;margin-bottom:0.5rem">Search Article No.</label>
-            <div style="display:flex; gap:1rem;">
+            <div style="display:flex; gap:1rem; flex-wrap: wrap;">
                 <input type="text" id="sellSearchInput" placeholder="ex. ART-101" style="flex:1;">
                 <button type="button" class="btn primary" onclick="searchSellProduct()">Search Item</button>
+                <button type="button" class="btn outline" id="btnScanBarcode" style="display:flex; align-items:center; gap:0.5rem; color:var(--text-primary); border-color:var(--border);">
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7V4h3m10 0h3v3m0 10v3h-3M4 17v3h3m2-10h6v6H9v-6z"></path></svg>
+                    Scan Box
+                </button>
+            </div>
+            <!-- Barcode Scanner Viewport -->
+            <div id="readerWrapper" style="display:none; margin-top:1.5rem; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.2); border:2px solid var(--primary);">
+                <div id="reader" style="width:100%; border:none;"></div>
+                <div style="padding:1rem; text-align:center; background:var(--bg-white);">
+                    <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
+                </div>
             </div>
         </div>
 
@@ -150,7 +161,54 @@
 </main>
 {% endblock %}
 {% block scripts %}
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
     document.getElementById('executeSaleForm').addEventListener('submit', handleSaleSubmit);
+
+    // native Barcode Scanner Integration (Zero-Dependency UI)
+    let html5QrcodeScanner = null;
+
+    document.getElementById('btnScanBarcode').addEventListener('click', () => {
+        document.getElementById('readerWrapper').style.display = 'block';
+        
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: {width: 250, height: 150}, aspectRatio: 1.0 },
+                /* verbose= */ false
+            );
+            
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        }
+    });
+
+    function stopBarcodeScanner() {
+        document.getElementById('readerWrapper').style.display = 'none';
+        if (html5QrcodeScanner) {
+            try {
+                html5QrcodeScanner.clear();
+            } catch(e) {}
+            html5QrcodeScanner = null;
+        }
+    }
+
+    function onScanSuccess(decodedText, decodedResult) {
+        // Stop scanning immediately on success
+        stopBarcodeScanner();
+        
+        // Populate the input and auto-trigger the search
+        const searchInput = document.getElementById('sellSearchInput');
+        searchInput.value = decodedText;
+        showToast("Barcode Scanned: " + decodedText);
+        
+        // Small delay to let UI settle, then trigger search
+        setTimeout(() => {
+            searchSellProduct();
+        }, 300);
+    }
+
+    function onScanFailure(error) {
+        // handle scan failure silently to avoid spam
+    }
 </script>
 {% endblock %}

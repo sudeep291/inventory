@@ -105,6 +105,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'enterprise_super_secret_key_999')
 # Content Security Policy: Refined for APK Compatibility
 # Enterprise Global Variables (Infrastructure Layer)
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
+EMPLOYEE_PASSWORD = os.environ.get('EMPLOYEE_PASSWORD', 'staff123')
 UPLOAD_FOLDER = os.path.join('static', 'images')
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -197,6 +198,11 @@ def require_login():
     allowed_routes = ['login', 'static']
     if request.endpoint not in allowed_routes and 'logged_in' not in session:
         return redirect(url_for('login'))
+        
+    # 🛡️ RBAC Enforcement: Employees cannot access analytics or overview
+    if request.endpoint in ['analytics', 'overview', 'factory_reset']:
+        if session.get('role') != 'owner':
+            return "403 Forbidden: You do not have owner privileges to view this section.", 403
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -211,10 +217,19 @@ def login():
 
     if request.method == 'POST':
         password = request.form.get('password')
+        
+        # Determine Role
         if password == OWNER_PASSWORD:
-            # ✅ Correct password — clear any previous failed attempts for this IP
             _LOGIN_LOCKOUT.pop(ip, None)
             session['logged_in'] = True
+            session['role'] = 'owner'
+            session.permanent = True
+            return redirect(url_for('dashboard'))
+            
+        elif password == EMPLOYEE_PASSWORD:
+            _LOGIN_LOCKOUT.pop(ip, None)
+            session['logged_in'] = True
+            session['role'] = 'employee'
             session.permanent = True
             return redirect(url_for('dashboard'))
         else:
@@ -622,6 +637,55 @@ def api_remove_product():
     except Exception as e:
         conn.rollback()
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/analytics/heatmap')
+def api_analytics_heatmap():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        # Group by size and aggregate Sales vs Current Stock
+        query = """
+            SELECT 
+                ps.size as size,
+                SUM(ps.stock) as current_stock,
+                COALESCE((SELECT SUM(quantity) FROM Sales s WHERE s.product_id = ps.product_id AND s.size = ps.size AND s.status = 'SALE'), 0) as total_sold
+            FROM ProductSizes ps
+            JOIN Products p ON ps.product_id = p.id
+            WHERE p.is_active = TRUE
+            GROUP BY ps.product_id, ps.size
+        """
+        cursor.execute(query)
+        rows = cursor.fetchall()
+        
+        # Aggregate across all products to a single size matrix
+        size_agg = {}
+        for r in rows:
+            size_val = float(r['size'])
+            sold = int(r['total_sold'])
+            stock = int(r['current_stock'])
+            if size_val not in size_agg:
+                size_agg[size_val] = {"sold": 0, "stock": 0}
+            size_agg[size_val]["sold"] += sold
+            size_agg[size_val]["stock"] += stock
+
+        heatmap_data = []
+        for s, data in sorted(size_agg.items()):
+            heat_level = "cold"
+            if data["sold"] > 10 and data["stock"] < 10:
+                heat_level = "hot"
+            elif data["sold"] > 2:
+                heat_level = "warm"
+                
+            heatmap_data.append({
+                "size": s,
+                "total_sold": data["sold"],
+                "current_stock": data["stock"],
+                "heat_level": heat_level
+            })
+            
+        return jsonify({"success": True, "data": heatmap_data})
+    except Exception as e:
+        return jsonify({"error": str(e), "success": False}), 500
 
 @app.route('/api/stock/adjust', methods=['POST'])
 def api_stock_adjust():
