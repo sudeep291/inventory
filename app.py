@@ -144,11 +144,11 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8)
 )
 
-# Hardware Permissions Lockdown: Disables unused phone features in the APK
+# Hardware Permissions Lockdown: Selectively enabling professional features
 permissions_policy = {
     'geolocation': '()',
     'microphone': '()',
-    'camera': '()',
+    'camera': 'self', # 📸 Restored: Authorized for Enterprise Product Photography
     'payment': '()'
 }
 
