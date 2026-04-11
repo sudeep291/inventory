@@ -14,6 +14,10 @@ from flask_compress import Compress
 from whitenoise import WhiteNoise
 from PIL import Image
 import io
+import bleach
+from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 load_dotenv()
 
@@ -79,11 +83,39 @@ def process_image(image_file, max_size=(600, 600)):
         print(f"IMAGE OPTIMIZATION ERROR: {e}")
         return None
 
+def clean_input(text):
+    """Enterprise-grade sanitization to prevent XSS/Malware injection"""
+    if not text or not isinstance(text, str): return text
+    return bleach.clean(text, tags=[], attributes={}, strip=True)
+
 app = Flask(__name__)
 app.json = CustomJSONProvider(app)
+app.secret_key = os.environ.get('SECRET_KEY', 'enterprise_super_secret_key_999')
+
+# 🛡️ GLOBAL SECURITY HARDENING (SecOps)
+# Content Security Policy: Allows internal scripts, styles, and Google Fonts
+csp = {
+    'default-src': '\'self\'',
+    'script-src': ['\'self\'', '\'unsafe-inline\'', 'https://cdn.jsdelivr.net'],
+    'style-src': ['\'self\'', '\'unsafe-inline\'', 'https://fonts.googleapis.com'],
+    'font-src': ['\'self\'', 'https://fonts.gstatic.com'],
+    'img-src': ['\'self\'', 'data:', 'https://via.placeholder.com'],
+    'connect-src': '\'self\''
+}
+
+# Talisman: Enforces HTTPS, HSTS, and XSS Protection Headers
+talisman = Talisman(app, content_security_policy=csp, force_https=True)
+
+# Limiter: Prevents automated bot and "virus" brute-force attacks
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
+
 Compress(app) # Global professional compression for faster UI
 app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') # Professional asset delivery
-app.secret_key = os.environ.get('SECRET_KEY', 'default-dev-key')
 OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
 UPLOAD_FOLDER = os.path.join('static', 'images')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -162,6 +194,7 @@ def analytics():
     return render_template('analytics.html', active_page='analytics')
 
 @app.route('/admin/factory_reset')
+@limiter.limit("3 per minute") # 🛡️ Protection against automated destruction "viruses"
 def factory_reset():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
@@ -307,7 +340,7 @@ def api_inventory():
 
 @app.route('/api/categories', methods=['POST'])
 def api_add_category():
-    name = request.json.get('name', '').strip()
+    name = clean_input(request.json.get('name', '').strip())
     if not name: return jsonify({"error": "Name required"}), 400
     
     conn = get_db()
@@ -328,10 +361,10 @@ def api_add_category():
 
 @app.route('/api/products', methods=['POST'])
 def api_add_product():
-    name = request.form.get('name')
-    article_no = request.form.get('article_no')
+    name = clean_input(request.form.get('name'))
+    article_no = clean_input(request.form.get('article_no'))
     category_id = request.form.get('category_id')
-    gender = request.form.get('gender')
+    gender = clean_input(request.form.get('gender'))
     sizes_json = request.form.get('sizes_json')  # Needs JSON parsing
     mrp = request.form.get('mrp')
     default_discount = request.form.get('default_discount')
@@ -418,6 +451,7 @@ def api_remove_product_image(id):
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/stock/adjust_batch', methods=['POST'])
+@limiter.limit("20 per minute") # 🛡️ Protection against automated injection attacks
 def api_adjust_stock_batch():
     data = request.json
     updates = data.get('updates', [])
