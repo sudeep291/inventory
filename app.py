@@ -426,9 +426,16 @@ def api_adjust_stock_batch():
         
         conn.commit()
         return jsonify({"success": True})
+@app.route('/api/returns/stats')
+def api_returns_stats():
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as total FROM Sales WHERE status = 'RETURNED'")
+        row = cursor.fetchone()
+        return jsonify({"success": True, "total": row['total']})
     except Exception as e:
-        conn.rollback()
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/remove', methods=['POST'])
 def api_remove_product():

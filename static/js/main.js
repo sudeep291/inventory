@@ -57,6 +57,14 @@ async function fetchProducts() {
     if (data) productsCache = data.products;
 }
 
+async function loadReturnStats() {
+    const data = await fetchAPI('/api/returns/stats');
+    if (data && data.success) {
+        const counter = document.getElementById('totalReturnCount');
+        if (counter) counter.textContent = data.total;
+    }
+}
+
 /* ==================================
    INDEX.HTML / DASHBOARD
 ================================== */
@@ -482,6 +490,7 @@ async function executeBatchUpdate() {
         playSuccessSequence('updateResultContainer', 'Stock Augmented Safely!', async () => {
             document.getElementById('updateSearchInput').value = '';
             await fetchProducts(); 
+            await loadReturnStats();
         });
     }
 }
@@ -780,6 +789,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('img[loading="lazy"]').forEach(img => {
         optimizeImage(img);
     });
+    // Load return statistics if on the appropriate page
+    if (document.getElementById('totalReturnCount')) {
+        loadReturnStats();
+    }
 });
 
 /* ==================================
