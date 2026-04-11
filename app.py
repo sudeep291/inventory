@@ -148,7 +148,7 @@ app.config.update(
 permissions_policy = {
     'geolocation': '()',
     'microphone': '()',
-    'camera': 'self', # 📸 Restored: Authorized for Enterprise Product Photography
+    'camera': ('self',), # 📸 Refined: Using tuple format for absolute browser/proxy compatibility
     'payment': '()'
 }
 
@@ -948,6 +948,11 @@ scheduler.add_job(func=enterprise_heartbeat, trigger="interval", minutes=3)
 # Safe Startup Block (Professional Resilience)
 def startup_checks():
     try:
+        # 🛡️ SAFE-BOOT DELAY: Give Render 10 seconds to bind port and confirm 'Healthy'
+        # This prevents 502 crashes caused by heavy background init during boot.
+        import time
+        time.sleep(10) 
+        
         with app.app_context():
             init_db()
             logger.info("Professional Initialization: DB migrated successfully.")
