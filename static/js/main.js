@@ -361,14 +361,13 @@ async function searchUpdateProduct() {
         row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
-            <div style="display:flex; align-items:center; gap:0.75rem;">
-                <label class="return-toggle" data-sizeid="${s.id}" style="margin:0;">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
-                    <span>🔄 Return</span>
+                    <span class="size-badge-num">${s.size}</span>
                 </label>
                 <div style="display:flex; flex-direction:column; gap:0.1rem;">
-                    <strong style="color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> 
-                    <span style="color:#64748b; font-size:0.85rem; font-weight:600">Stock: ${s.stock}</span>
+                    <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">

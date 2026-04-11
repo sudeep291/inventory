@@ -799,28 +799,65 @@ body.dark-theme .bottom-nav {
 .badge-compare.down { color: #fb7185; }
 .badge-compare.flat { color: #94a3b8; }
 
-/* Product Return Styling (Small, Discrete Button) */
-.return-toggle {
+/* Size Badge as Return Toggle (MNC Design) */
+.size-return-badge {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    background: #f8fafc;
-    padding: 0.25rem 0.6rem;
-    border-radius: 6px;
+    justify-content: center;
     cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid #e2e8f0;
     user-select: none;
-    width: fit-content;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: #64748b;
+    width: 52px;
+    height: 52px;
+    border-radius: 10px;
+    border: 2px solid #e2e8f0;
+    background: #f1f5f9;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-shrink: 0;
+    position: relative;
 }
-.return-toggle.active {
-    background: #f0fdf4;
-    border-color: #22c55e;
-    color: #15803d;
+.size-return-badge input { display: none; }
+.size-badge-num {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #334155;
+    line-height: 1;
+    transition: all 0.2s;
 }
+.size-return-badge:hover {
+    border-color: #f87171;
+    background: #fff1f2;
+}
+.size-return-badge:hover .size-badge-num {
+    color: #ef4444;
+}
+.size-return-badge.active {
+    background: #fee2e2;
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239,68,68,0.15);
+}
+.size-return-badge.active .size-badge-num {
+    color: #dc2626;
+}
+/* Optional: return indicator dot */
+.size-return-badge.active::after {
+    content: '↩';
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 18px;
+    height: 18px;
+    background: #dc2626;
+    color: white;
+    border-radius: 50%;
+    font-size: 0.6rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+}
+
+/* Keep return-toggle for backwards compat */
+.return-toggle { display: none; }
 .return-toggle input { display: none; }
 
 .status-badge-returned {
