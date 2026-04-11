@@ -108,9 +108,9 @@ async function loadOverviewTable() {
         if (p.image_path) {
             imageSectionHTML = `
             <div class="shimmer" style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border);" onmouseenter="this.querySelector('.upload-overlay').style.opacity='1'; this.querySelector('.delete-img-btn').style.opacity='1'" onmouseleave="this.querySelector('.upload-overlay').style.opacity='0'; this.querySelector('.delete-img-btn').style.opacity='0'" onclick="triggerImageUpload(${p.id})">
-                <img class="prod-img lazy-img" data-src="/static/${p.image_path}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                <img class="prod-img lazy-img" data-src="/static/${p.image_path}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;">
                 
-                <div id="fallback-${p.id}" style="display:none; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary);">
+                <div class="fallback-icon" id="fallback-${p.id}" style="display:none; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary);">
                     <span style="font-size:3rem; margin-bottom:0.5rem;">📁</span>
                     <span style="font-weight:600; color:var(--primary)">Open Folder to Upload</span>
                 </div>
@@ -153,6 +153,9 @@ async function loadOverviewTable() {
             </div>
         `;
         grid.appendChild(card);
+        
+        const lazyImg = card.querySelector('.lazy-img');
+        if (lazyImg) imageObserver.observe(lazyImg);
     });
 }
 
@@ -165,17 +168,25 @@ function triggerImageUpload(productId) {
         if(!file) return;
         
         const imgEl = document.getElementById(`img-${productId}`);
-        const originalSrc = imgEl.src;
-        imgEl.src = 'https://via.placeholder.com/300x200?text=Uploading...';
+        const shimmerEl = imgEl ? imgEl.closest('div') : null;
+        const originalSrc = imgEl ? imgEl.src : '';
+        if(imgEl) {
+            imgEl.src = 'https://via.placeholder.com/300x200?text=Uploading...';
+            imgEl.style.display = 'block';
+            if(shimmerEl) {
+                const folders = shimmerEl.querySelectorAll('span');
+                folders.forEach(f => f.style.display = 'none');
+            }
+        }
         
         const formData = new FormData();
         formData.append('image', file);
         const data = await fetchAPI(`/api/products/${productId}/image`, { method: 'POST', body: formData });
         if(data && data.success) {
-            imgEl.src = `/static/${data.image_path}?t=${new Date().getTime()}`;
             showToast("Product Image Updated!");
+            await loadOverviewTable(); // Reload to get fresh components
         } else {
-            imgEl.src = originalSrc;
+            if(imgEl) imgEl.src = originalSrc;
         }
     };
     input.click();
@@ -213,7 +224,16 @@ async function searchSellProduct() {
     document.getElementById('sellResMRP').textContent = toMoney(prod.mrp);
     document.getElementById('sellResBaseDisc').textContent = prod.default_discount; // Show as raw % number
     document.getElementById('sellResSold').textContent = toMoney(prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100)));
-    document.getElementById('sellResImg').src = prod.image_path ? `/static/${prod.image_path}` : 'https://via.placeholder.com/300x200?text=No+Image';
+    
+    const sellImg = document.getElementById('sellResImg');
+    if (sellImg) {
+        sellImg.classList.remove('img-loaded');
+        const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
+        sellImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
+        sellImg.onload = () => sellImg.classList.add('img-loaded');
+        sellImg.onerror = () => sellImg.classList.add('img-loaded');
+    }
+
     selectedSellProductMRP = prod.mrp;
     
     // Auto-fill Item Sold For with Default Strategy Price
@@ -322,7 +342,15 @@ async function searchUpdateProduct() {
     document.getElementById('updateResName').textContent = prod.name;
     document.getElementById('updateResCP').textContent = toMoney(prod.mrp);
     document.getElementById('updateResSold').textContent = toMoney(prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100)));
-    document.getElementById('updateResImg').src = prod.image_path ? `/static/${prod.image_path}` : 'https://via.placeholder.com/300x200?text=No+Image';
+    
+    const updateImg = document.getElementById('updateResImg');
+    if (updateImg) {
+        updateImg.classList.remove('img-loaded');
+        const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
+        updateImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
+        updateImg.onload = () => updateImg.classList.add('img-loaded');
+        updateImg.onerror = () => updateImg.classList.add('img-loaded');
+    }
     
     const sizesContainer = document.getElementById('updateResSizes');
     sizesContainer.innerHTML = '';
@@ -679,9 +707,23 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
             const img = entry.target;
             const src = img.getAttribute('data-src');
             if (src) {
-                img.src = src;
+                // Ensure spaces in the image path are safe via encodeURI
+                img.src = encodeURI(src);
                 img.removeAttribute('data-src');
-                img.onload = () => img.classList.add('img-loaded');
+                img.addEventListener('load', () => {
+                    img.classList.add('img-loaded');
+                    img.style.display = 'block';
+                    if (img.nextElementSibling && img.nextElementSibling.classList.contains('fallback-icon')) {
+                        img.nextElementSibling.style.display = 'none';
+                    }
+                });
+                img.addEventListener('error', () => {
+                    img.classList.add('img-loaded'); // ensure opacity is 1 so display:none toggles nicely
+                    img.style.display = 'none';
+                    if (img.nextElementSibling && img.nextElementSibling.classList.contains('fallback-icon')) {
+                        img.nextElementSibling.style.display = 'flex';
+                    }
+                });
             }
             observer.unobserve(img);
         }
@@ -690,7 +732,8 @@ const imageObserver = new IntersectionObserver((entries, observer) => {
 
 function optimizeImage(img) {
     if (!img) return;
-    img.onload = () => img.classList.add('img-loaded');
+    img.addEventListener('load', () => img.classList.add('img-loaded'));
+    img.addEventListener('error', () => img.classList.add('img-loaded'));
     // If image is already complete (cached)
     if (img.complete) img.classList.add('img-loaded');
 }
