@@ -555,15 +555,25 @@ async function handleProductSubmit(e) {
 function animateValue(obj, start, end, duration, formatMoney = false) {
     if(!obj) return;
     let startTimestamp = null;
+    const endVal = parseFloat(end) || 0;
+    const startVal = parseFloat(start) || 0;
+    
     const step = (timestamp) => {
         if (!startTimestamp) startTimestamp = timestamp;
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-        const val = progress * (end - start) + start;
-        obj.innerHTML = formatMoney ? '₹' + Math.floor(val).toLocaleString() : Math.floor(val).toLocaleString();
+        const val = progress * (endVal - startVal) + startVal;
+        
+        let displayVal = Math.floor(val).toLocaleString();
+        if (formatMoney) displayVal = '₹' + displayVal;
+        
+        obj.innerHTML = displayVal;
+        
         if (progress < 1) {
             window.requestAnimationFrame(step);
         } else {
-            obj.innerHTML = formatMoney ? '₹' + Number(end).toLocaleString() : Number(end).toLocaleString();
+            let finalVal = Number(endVal).toLocaleString();
+            if (formatMoney) finalVal = '₹' + finalVal;
+            obj.innerHTML = finalVal;
         }
     };
     window.requestAnimationFrame(step);

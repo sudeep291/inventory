@@ -426,6 +426,10 @@ def api_adjust_stock_batch():
         
         conn.commit()
         return jsonify({"success": True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 400
+
 @app.route('/api/returns/stats')
 def api_returns_stats():
     conn = get_db()
