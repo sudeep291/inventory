@@ -94,6 +94,7 @@ body.dark-theme .exec-size-item {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     text-decoration: none;
     background: var(--bg-white);
+    -webkit-tap-highlight-color: transparent; /* Android UX Smoothness */
 }
 .btn.primary { background: var(--primary); color: white; box-shadow: 0 4px 6px rgba(59,130,246,0.2); }
 .btn.primary:hover { background: var(--primary-hover); transform: translateY(-2px) scale(1.03); box-shadow: 0 10px 15px rgba(59,130,246,0.3); }
@@ -141,6 +142,22 @@ body.dark-theme .exec-size-item {
     color: rgba(255,255,255,0.8);
     font-size: 0.85rem;
     white-space: nowrap;
+}
+.mobile-theme-btn {
+    display: none; /* Hidden on Windows/Desktop */
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+    padding: 0.6rem;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mobile-theme-btn:active {
+    transform: scale(0.9);
+    background: rgba(255, 255, 255, 0.15);
 }
 .header-right .btn.outline:hover {
     background: rgba(255,255,255,0.05);
@@ -893,8 +910,19 @@ body.dark-theme .return-toggle.active {
     .vision-windows { display: none; }
     .vision-android { display: block; }
     
-    .dashboard-layout { padding: 1.5rem 1rem; }
-    .hero-section { padding: 2rem 1.5rem; }
+    .app-header {
+        padding: 0.75rem 1rem;
+        padding-top: max(0.75rem, env(safe-area-inset-top)); /* Support for Android Notches */
+    }
+    
+    .mobile-theme-btn {
+        display: flex; /* Visible on Mobile/Android */
+    }
+    
+    .dashboard-layout { 
+        padding: 1.5rem 1rem; 
+        padding-bottom: calc(85px + env(safe-area-inset-bottom)); /* Dynamic bottom nav space */
+    }
     
     /* Auto-Scaling for Result Metrics (Mobile UI Purpose) */
     .premium-result-card p {
