@@ -349,55 +349,52 @@ async function searchUpdateProduct() {
     currentUpdateProductId = prod.id;
     const resName = document.getElementById('updateResName');
     resName.textContent = prod.name;
-    
-    const mrpInput = document.getElementById('updateResCP');
-    mrpInput.value = prod.mrp;
-    mrpInput.dataset.discount = prod.default_discount;
-    document.getElementById('updateResSold').innerText = (prod.mrp - (prod.mrp * prod.default_discount / 100)).toFixed(2);
+    resName.style.color = '#ef4444'; // MNC Professional: Luminous Red
+    resName.style.fontSize = '2.5rem';
+    resName.style.fontWeight = '900';
+    document.getElementById('updateResCP').textContent = toMoney(prod.mrp);
+    document.getElementById('updateResSold').textContent = toMoney(prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100)));
     
     const updateImg = document.getElementById('updateResImg');
     if (updateImg) {
-        updateImg.src = prod.image_path || '/static/images/logo.png';
+        updateImg.classList.remove('img-loaded');
+        const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
+        // Use optimizeImage to attach listeners without overriding HTML attributes
+        optimizeImage(updateImg);
+        updateImg.src = encodedPath ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${encodedPath}`) : 'https://via.placeholder.com/300x200?text=No+Image';
     }
     
     const sizesContainer = document.getElementById('updateResSizes');
-    sizesContainer.style.display = 'flex';
-    sizesContainer.style.flexDirection = 'column';
-    sizesContainer.style.gap = '1.25rem';
     sizesContainer.innerHTML = '';
-    
     prod.sizes.forEach(s => {
         const row = document.createElement('div');
         row.className = 'update-row';
-        row.style.display = 'flex'; 
-        row.style.justifyContent = 'space-between'; /* Expansive wide logic */
-        row.style.alignItems = 'center';
-        row.style.background = 'rgba(255, 255, 255, 0.05)'; 
-        row.style.padding = '1.25rem 2rem'; 
-        row.style.borderRadius = '12px'; 
-        row.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-        row.style.width = '100%';
+        row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
+        row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
-            <div style="display:flex; align-items:center; gap:2rem;">
-                <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return" style="transform: scale(1.25);">
+            <div style="display:flex; align-items:center; gap:1rem;">
+                <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
                     <span class="size-badge-num">R | UK: ${s.size}</span>
                 </label>
-                <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                    <span style="color:rgba(255,255,255,0.6); font-size:0.8rem; text-transform:uppercase; letter-spacing:1px; font-weight:700;">Stock Level</span>
-                    <span style="color:#ffffff; font-size:1.3rem; font-weight:900;">${s.stock} Pairs</span>
+                <div style="display:flex; flex-direction:column; gap:0.1rem;">
+                    <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:1.5rem;">
-                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:130px; padding:0.8rem; border:2px solid #ff4d4d; background:rgba(0,0,0,0.3); color:#ffffff; border-radius:8px; font-size:1rem; font-weight:800; display:none;">
-                <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price}" placeholder="+Qty" min="1" style="width:100px; padding:0.8rem; border:2px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(255,255,255,0.05); color:#ffffff; outline:none; font-family:'Inter'; font-weight:900; font-size:1.3rem; transition:all 0.3s;" oninput="if(this.value>0) { this.style.borderColor='#10b981'; this.style.color='#10b981'; } else { this.style.borderColor='rgba(255,255,255,0.2)'; this.style.color='#ffffff'; }; handleRowReturnUI(this); validateBatchBtn()">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
+                <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100))}" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-family:'Inter'; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; handleRowReturnUI(this); validateBatchBtn()">
             </div>
         `;
         sizesContainer.appendChild(row);
     });
     
     container.style.display = 'block';
+    container.classList.remove('animate-fade-up');
+    void container.offsetWidth;
+    container.classList.add('animate-fade-up');
+    
     validateBatchBtn();
 }
 
@@ -421,24 +418,18 @@ function addNewUpdateSizeRow() {
     const container = document.getElementById('updateResSizes');
     const row = document.createElement('div');
     row.className = 'update-row';
-    row.style.display = 'flex'; 
-    row.style.justifyContent = 'space-between'; 
-    row.style.alignItems = 'center';
-    row.style.background = 'rgba(255, 255, 255, 0.05)'; 
-    row.style.padding = '1.25rem 2rem'; 
-    row.style.borderRadius = '12px'; 
-    row.style.border = '1px solid rgba(255, 255, 255, 0.1)';
-    row.style.width = '100%';
+    row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
+    row.style.background = '#eff6ff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #3b82f6';
     
     row.innerHTML = `
-        <div style="display:flex; align-items:center; gap:2rem;">
-            <strong style="color:#ffffff; font-size:1.3rem; letter-spacing:1px;">SIZE UK</strong> 
-            <input type="number" class="new-size-val" placeholder="0.0" step="0.5" style="width:90px; padding:0.8rem; border:2px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#ffffff; font-weight:900; outline:none; font-size:1.2rem;">
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+            <strong style="color:#1d4ed8; font-size:1.1rem">UK</strong> 
+            <input type="number" class="new-size-val" placeholder="Size" step="0.5" style="width:65px; padding:0.5rem; border:1px solid #3b82f6; border-radius:6px; font-weight:700">
+            <span style="color:#1d4ed8; font-weight:700; margin-left:1rem;">Add Stock:</span>
         </div>
-        <div style="display:flex; align-items:center; gap:1.5rem;">
-            <span style="color:#ffffff; font-weight:800; font-size:1rem;">ADD STOCK:</span>
-            <input type="number" class="batch-update-val is-new-size" placeholder="+Qty" min="1" style="width:90px; padding:0.8rem; border:2px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#ffffff; font-weight:900; outline:none; font-size:1.3rem;" oninput="if(this.value>0) { this.style.borderColor='#10b981'; } else { this.style.borderColor='rgba(255,255,255,0.2)'; }; validateBatchBtn()">
-            <button type="button" class="btn danger" style="padding:0.6rem 0.8rem; font-size:0.9rem; border-radius:8px; font-weight:800;" onclick="this.parentElement.parentElement.remove(); validateBatchBtn()">✕</button>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+            <input type="number" class="batch-update-val is-new-size" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #3b82f6; border-radius:6px; font-weight:700" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; } else { this.style.backgroundColor='white'; }; validateBatchBtn()">
+            <button type="button" class="btn danger" style="padding:0.4rem 0.6rem; font-size:0.8rem;" onclick="this.parentElement.parentElement.remove(); validateBatchBtn()">X</button>
         </div>
     `;
     container.appendChild(row);
@@ -476,29 +467,23 @@ function previewBatchUpdate() {
                 if(!sizeInput || sizeInput.value.trim() === '') return;
                 const sizeVal = sizeInput.value.trim();
                 batchPayload.push({is_new: true, product_id: currentUpdateProductId, size: sizeVal, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div><span class="badge" style="background:#dbeafe; color:#2563eb;">NEW</span> UK ${sizeVal}: +${val}</div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;">NEW</span>Size UK ${sizeVal}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             } else {
                 batchPayload.push({size_id: i.dataset.sizeid, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div>UK ${i.dataset.sizename}: +${val} ${isReturn ? '(RETURN)' : ''}</div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size UK ${i.dataset.sizename}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             }
         }
     });
-    
     if(batchPayload.length === 0) return;
     
-    const new_mrp = document.getElementById('updateResCP').value;
-    summaryHTML += `<hr style="margin:1rem 0; border:0; border-top:1px solid #eee;">`;
-    summaryHTML += `<div style="color:#2563eb; font-weight:700;">Update MRP to: ₹${new_mrp}</div>`;
-
     document.getElementById('batchSummaryList').innerHTML = summaryHTML;
     document.getElementById('batchConfirmModal').style.display = 'flex';
 }
 
 async function executeBatchUpdate() {
-    const new_mrp = document.getElementById('updateResCP').value;
-    const data = await fetchAPI('/api/stock/adjust_batch', 'POST', { 
-        updates: batchPayload,
-        new_mrp: new_mrp
+    const data = await fetchAPI('/api/stock/adjust_batch', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: batchPayload })
     });
     if (data && data.success) {
         document.getElementById('batchConfirmModal').style.display = 'none';
@@ -830,15 +815,4 @@ if ('serviceWorker' in navigator) {
 function toggleMobileMenu() {
     const menu = document.getElementById('mobileMenu');
     if (menu) menu.classList.toggle('active');
-}
-/* Dynamic Pricing Synchronization */
-function resyncUpdateSold() {
-    const mrpEl = document.getElementById('updateResCP');
-    const soldEl = document.getElementById('updateResSold');
-    if (!mrpEl || !soldEl) return;
-    
-    const newMrp = parseFloat(mrpEl.value) || 0;
-    const disc = parseFloat(mrpEl.dataset.discount) || 0;
-    const newSold = newMrp - (newMrp * disc / 100);
-    soldEl.innerText = newSold.toFixed(2);
 }

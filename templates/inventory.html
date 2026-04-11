@@ -1,3 +1,4 @@
+{% extends 'layout.html' %}
 {% block head %}
 <link rel="preload" as="image" href="/static/images/bg_sell_product.webp" fetchpriority="high">
 {% endblock %}
@@ -8,27 +9,18 @@
         background-size: cover !important;
     }
     .form-container {
-        background: rgba(15, 23, 42, 0.45) !important; /* Premium Semi-Transparent */
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        max-width: 850px !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
-    .form-container h2, .form-container p, .form-container label, .form-container strong {
+    .form-container h2, .form-container p, .form-container label, .form-container h3, .form-container strong {
         color: #ffffff !important;
     }
-    #sellResName { 
-        color: #ff4d4d !important; /* Solid Luminous Red */
-        font-size: 3.5rem !important;
-        font-weight: 950 !important;
-        margin-bottom: 1.5rem !important;
-        letter-spacing: -1.5px;
-    }
-    .premium-result-card {
-        background: rgba(255, 255, 255, 0.03) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        backdrop-filter: blur(4px);
+    .form-container .result-card {
+        background: rgba(0,0,0,0.2) !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
     }
     body[data-theme='dark'] .form-container {
         background: rgba(15, 23, 42, 0.3) !important;
@@ -41,14 +33,13 @@
         margin-bottom: 0.75rem !important; 
     }
     .premium-result-card p { 
-        font-size: 1.4rem !important; 
-        color: #e2e8f0 !important;
-        margin-bottom: 1.25rem !important; 
+        font-size: 1.3rem !important; 
+        color: #475569 !important;
+        margin-bottom: 0.75rem !important; 
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        border-bottom: 1px solid rgba(255,255,255,0.05);
-        padding-bottom: 1rem;
+        border-bottom: 1px dashed #e2e8f0;
+        padding-bottom: 0.5rem;
     }
     .premium-result-card .val {
         font-weight: 800 !important;
