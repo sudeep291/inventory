@@ -213,7 +213,6 @@ def analytics():
     return render_template('analytics.html', active_page='analytics')
 
 @app.route('/admin/factory_reset')
-@limiter.limit("3 per minute") # 🛡️ Protection against automated destruction "viruses"
 def factory_reset():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
@@ -470,7 +469,6 @@ def api_remove_product_image(id):
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/stock/adjust_batch', methods=['POST'])
-@limiter.limit("20 per minute") # 🛡️ Protection against automated injection attacks
 def api_adjust_stock_batch():
     data = request.json
     updates = data.get('updates', [])
