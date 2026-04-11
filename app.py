@@ -139,7 +139,7 @@ csrf = CSRFProtect(app)
 # Session Hardening: Prevents hackers from stealing or leaking login sessions
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=IS_PROD, # 🛡️ Fixed: Only force SSL in production to prevent 502 in dev
+    SESSION_COOKIE_SECURE=False, # 🛡️ Render handles this; forcing it inside the code causes 502 loops
     SESSION_COOKIE_SAMESITE='Lax',
     PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8)
 )
@@ -153,12 +153,11 @@ permissions_policy = {
 }
 
 # Talisman Configuration: Elite Security Headers
-# 🛡️ Optimized Initialization: Using 'init_app' to stack with ProxyFix correctly
 talisman = Talisman(
     content_security_policy=csp, 
     permissions_policy=permissions_policy,
-    force_https=IS_PROD, 
-    session_cookie_secure=IS_PROD
+    force_https=False, # 🛡️ ULTIMATE 502 FIX: Let Render Dashboard handle the redirect. 
+    session_cookie_secure=False
 )
 
 # 🚀 ENTERPRISE MIDDLEWARE STACK (Hardened for SaaS Reliability)
@@ -172,6 +171,13 @@ app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/')
 
 # 3. Security Layer (Inner): Hooks applied to the cleaned request context
 talisman.init_app(app) 
+
+# --- HIGH AVAILABILITY HEALTH PROBE ---
+@app.route('/ping')
+@csrf.exempt
+def enterprise_ping():
+    return "SYSTEM_HEALTHY", 200
+# --------------------------------------
 
 Compress(app) # Global professional compression
 
