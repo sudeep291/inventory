@@ -372,6 +372,7 @@ async function searchUpdateProduct() {
     const sizesContainer = document.getElementById('updateResSizes');
     sizesContainer.innerHTML = '';
     prod.sizes.forEach(s => {
+        const row = document.createElement('div');
         row.className = 'update-row';
         row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
         row.style.flexWrap = 'wrap'; row.style.gap = '0.75rem';
