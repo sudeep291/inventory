@@ -36,6 +36,9 @@ def get_db_connection():
         for attempt in range(3): # Professional retry loop for cold-boot resilience
             try:
                 conn = pool.getconn()
+                # Global Timezone Alignment (Enterprise Accuracy)
+                with conn.cursor() as cur:
+                    cur.execute("SET TIME ZONE 'Asia/Kolkata';")
                 return conn
             except Exception as e:
                 print(f"POOL ATTEMPT {attempt+1} FAILED: {e}")
