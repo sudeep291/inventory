@@ -12,6 +12,8 @@ from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_compress import Compress
 from whitenoise import WhiteNoise
+from PIL import Image
+import io
 
 load_dotenv()
 
@@ -56,6 +58,26 @@ class CustomJSONProvider(DefaultJSONProvider):
         if isinstance(obj, decimal.Decimal):
             return float(obj)
         return super().default(obj)
+        
+def process_image(image_file, max_size=(600, 600)):
+    """Professional Image Optimizer: Resizes and compresses for mobile excellence."""
+    try:
+        img = Image.open(image_file)
+        # Handle transparency (convert PNG to white background for consistent JPEG behavior)
+        if img.mode in ("RGBA", "P"):
+            img = img.convert("RGB")
+        
+        # High-Fidelity downscaling
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        
+        # Save to buffer
+        buffer = io.BytesIO()
+        img.save(buffer, format="JPEG", quality=85, optimize=True)
+        b64_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        return f"data:image/jpeg;base64,{b64_str}"
+    except Exception as e:
+        print(f"IMAGE OPTIMIZATION ERROR: {e}")
+        return None
 
 app = Flask(__name__)
 app.json = CustomJSONProvider(app)
@@ -328,13 +350,8 @@ def api_add_product():
         if not allowed_file(image.filename):
             return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
         
-        # MNC Professional Tier: Store image content as Base64 to ensure persistence across ephemeral cloud deployments
-        img_content = image.read()
-        if len(img_content) > 2 * 1024 * 1024:  # 2MB Limit
-             return jsonify({"error": "Image too large! Maximum 2MB allowed for database storage."}), 400
-        
-        b64_str = base64.b64encode(img_content).decode('utf-8')
-        image_path = f"data:{image.content_type};base64,{b64_str}"
+        # Optimized Base64 Conversion
+        image_path = process_image(image)
         
     try:
         import json
@@ -370,14 +387,11 @@ def api_update_product_image(id):
         return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
         
     try:
-        # MNC Professional Tier: Encode to Base64 for database-level persistence
-        img_content = image.read()
-        if len(img_content) > 2 * 1024 * 1024:
-            return jsonify({"error": "Image too large! Maximum 2MB allowed."}), 400
+        # Optimized Base64 Conversion
+        image_data_uri = process_image(image)
+        if not image_data_uri:
+             return jsonify({"error": "Failed to process image"}), 400
             
-        b64_str = base64.b64encode(img_content).decode('utf-8')
-        image_data_uri = f"data:{image.content_type};base64,{b64_str}"
-        
         conn = get_db()
         cursor = conn.cursor()
         cursor.execute("UPDATE Products SET image_path = %s WHERE id = %s", (image_data_uri, id))
