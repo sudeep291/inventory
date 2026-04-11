@@ -18,28 +18,44 @@ from flask_talisman import Talisman
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_wtf.csrf import CSRFProtect
+from cryptography.fernet import Fernet
 
 load_dotenv()
 
 # Enterprise Persistence Layer (Zero-Crash Infrastructure)
 GLOBAL_ANALYTICS_CACHE = {} 
-BACKUP_FILE = 'static/resilience_backup.json'
+BACKUP_FILE = 'static/resilience_backup.vault' # Refactored to vault extension for security
+
+# 🛡️ CRYPTOGRAPHIC VAULT LAYER (AES-128 Protection)
+def get_vault_cipher():
+    key = os.environ.get('DB_ENCRYPTION_KEY')
+    if not key:
+        # Auto-generation for local development security (Enterprise Resilience)
+        key = Fernet.generate_key().decode()
+        print("⚠️ VAULT WARNING: No DB_ENCRYPTION_KEY found. Generated temporary one.")
+    return Fernet(key.encode())
 
 def save_cache_to_disk():
-    import json
     try:
-        with open(BACKUP_FILE, 'w') as f:
-            json.dump(GLOBAL_ANALYTICS_CACHE, f)
-    except: pass
+        cipher = get_vault_cipher()
+        data_json = json.dumps(GLOBAL_ANALYTICS_CACHE)
+        encrypted_data = cipher.encrypt(data_json.encode())
+        with open(BACKUP_FILE, 'wb') as f:
+            f.write(encrypted_data)
+    except Exception as e:
+        print(f"VAULT SAVE ERROR: {e}")
 
 def load_cache_from_disk():
     global GLOBAL_ANALYTICS_CACHE
-    import json
     if os.path.exists(BACKUP_FILE):
         try:
-            with open(BACKUP_FILE, 'r') as f:
-                GLOBAL_ANALYTICS_CACHE = json.load(f)
-        except: pass
+            cipher = get_vault_cipher()
+            with open(BACKUP_FILE, 'rb') as f:
+                encrypted_data = f.read()
+            decrypted_data = cipher.decrypt(encrypted_data).decode()
+            GLOBAL_ANALYTICS_CACHE = json.loads(decrypted_data)
+        except Exception as e:
+            print(f"VAULT LOAD ERROR (Wrong Key or Corrupt): {e}")
 
 load_cache_from_disk()
 
