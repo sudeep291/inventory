@@ -423,6 +423,9 @@ def api_adjust_stock_batch():
     conn = get_db()
     cursor = conn.cursor()
     try:
+        new_mrp = data.get('new_mrp')
+        product_to_update = None
+        
         for up in updates:
             amount = safe_int(up.get('amount'))
             if amount <= 0: continue
@@ -431,6 +434,7 @@ def api_adjust_stock_batch():
             
             if up.get('is_new'):
                 product_id = up.get('product_id')
+                product_to_update = product_id
                 size = safe_float(up.get('size'))
                 
                 # Atomic UPSERT Logic (Professional Integrity)
@@ -452,6 +456,7 @@ def api_adjust_stock_batch():
                 size_id = up.get('size_id')
                 cursor.execute("UPDATE ProductSizes SET stock = stock + %s WHERE id = %s RETURNING product_id, size", (amount, size_id))
                 row = cursor.fetchone()
+                if row: product_to_update = row['product_id']
                 
                 if is_return and row:
                     refund_px = safe_float(up.get('price'), 0.0)
@@ -460,6 +465,17 @@ def api_adjust_stock_batch():
                         VALUES (%s, %s, %s, %s, 'RETURNED')
                     """, (row['product_id'], row['size'], amount, refund_px))
         
+        # Dynamic Price Synchronization Logic
+        if new_mrp and product_to_update:
+            nm = safe_float(new_mrp)
+            if nm > 0:
+                cursor.execute("SELECT default_discount FROM Products WHERE id = %s", (product_to_update,))
+                p_row = cursor.fetchone()
+                if p_row:
+                    disc = float(p_row['default_discount'])
+                    new_sp = nm - (nm * disc / 100.0)
+                    cursor.execute("UPDATE Products SET mrp = %s, selling_price = %s WHERE id = %s", (nm, new_sp, product_to_update))
+
         conn.commit()
         return jsonify({"success": True})
     except Exception as e:

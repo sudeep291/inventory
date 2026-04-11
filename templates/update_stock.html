@@ -94,16 +94,18 @@
                     <div class="img-hover-btn">🔍 PREVIEW</div>
                 </div>
                 <div class="result-info">
-                    <h3 id="updateResName" class="text-brand-primary"></h3>
+                    <h3 id="updateResName" style="color:#ef4444 !important"></h3>
                     
-                    <p class="text-brand-mrp">
-                        <span class="text-brand-label lbl-mrp">Target MRP:</span>
-                        <span class="val">₹<span id="updateResCP"></span></span>
+                    <p class="text-brand-mrp" style="height:auto; padding:1rem 0;">
+                        <span class="text-brand-label lbl-mrp" style="font-size:1rem !important">Target MRP:</span>
+                        <span class="val" style="font-size:1.8rem !important; display:flex; align-items:center;">
+                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:inherit; font-size:inherit; width:150px; outline:none; border-bottom:2px solid #2563eb" oninput="resyncUpdateSold()">
+                        </span>
                     </p>
                     
-                    <p class="text-brand-success" style="margin-bottom:1.5rem">
-                        <span class="text-brand-label lbl-sold">Target Sold:</span>
-                        <span class="val">₹<span id="updateResSold"></span></span>
+                    <p class="text-brand-success" style="margin-bottom:1.5rem; height:auto; padding:1rem 0; border-bottom:1px dashed #e2e8f0;">
+                        <span class="text-brand-label lbl-sold" style="font-size:1rem !important">Target Sold:</span>
+                        <span class="val" style="font-size:1.8rem !important">₹<span id="updateResSold"></span></span>
                     </p>
                     
                     <label class="text-brand-label lbl-input" style="display:block; margin-bottom:1rem;">Input Quantities to Add</label>
