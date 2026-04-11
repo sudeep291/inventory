@@ -406,6 +406,7 @@ function handleRowReturnUI(input) {
 function addNewUpdateSizeRow() {
     const container = document.getElementById('updateResSizes');
     const row = document.createElement('div');
+    row.className = 'update-row';
     row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
     row.style.background = '#eff6ff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #3b82f6';
     
