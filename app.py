@@ -119,6 +119,11 @@ csp = {
     'connect-src': '\'self\''
 }
 
+# Enterprise Global Variables (Infrastructure Layer)
+OWNER_PASSWORD = os.environ.get('OWNER_PASSWORD', 'admin123')
+UPLOAD_FOLDER = os.path.join('static', 'images')
+IS_PROD = os.environ.get('RENDER') is not None # Auto-detect production environment
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # 🛡️ ELITE DEFENSIVE SHIELDING (SecOps Level 2)
@@ -128,9 +133,9 @@ csrf = CSRFProtect(app)
 # Session Hardening: Prevents hackers from stealing or leaking login sessions
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SECURE=True, # Forces secure transfer in production
+    SESSION_COOKIE_SECURE=IS_PROD, # 🛡️ Fixed: Only force SSL in production to prevent 502 in dev
     SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8) # Auto-logout for security
+    PERMANENT_SESSION_LIFETIME=datetime.timedelta(hours=8)
 )
 
 # Hardware Permissions Lockdown: Disables unused phone features in the APK
@@ -146,9 +151,14 @@ talisman = Talisman(
     app, 
     content_security_policy=csp, 
     permissions_policy=permissions_policy,
-    force_https=True,
-    session_cookie_secure=True
+    force_https=IS_PROD, # Only force HTTPS in production
+    session_cookie_secure=IS_PROD
 )
+
+# 🚀 PERFORMANCE MIDDLEWARE (SaaS Optimization)
+from whitenoise import WhiteNoise
+Compress(app) # Global professional compression
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/', prefix='static/') 
 
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
