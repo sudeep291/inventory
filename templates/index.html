@@ -59,12 +59,72 @@
         <div class="bg-slide" style="background-image:url('/static/images/footwear_bg_3.webp');"></div>
         
         <div class="welcome-overlay">
-            <h1 style="font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; color: #ffffff; letter-spacing: -1px; text-shadow: 0 2px 20px rgba(0,0,0,0.6); margin-bottom: 1rem; line-height:1.2;">
-                Welcome <br> <span style="background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;">Mr. Prathap Avula</span>
-            </h1>
-            <p style="font-size: 1.1rem; color: #fcd34d; font-weight: 600; text-shadow: 0 1px 12px rgba(0,0,0,0.6); letter-spacing: 0.5px;">
-                to Sri Vijayalakshmi Footwear Inventory System
-            </p>
+            <!-- Premium Animation Styles -->
+            <style>
+            /* 1. Entrance: text fades in with stagger */
+            @keyframes heroEntrance {
+                from { opacity: 0; transform: translateY(22px); }
+                to   { opacity: 1; transform: translateY(0); }
+            }
+            /* 2. Infinite float — subtle, never distracting */
+            @keyframes premiumFloat {
+                0%, 100% { transform: translateY(0px); }
+                50%       { transform: translateY(-8px); }
+            }
+            /* 3. Shimmer sweep for gradient name */
+            @keyframes shimmerSweep {
+                0%   { background-position: -200% center; }
+                100% { background-position: 200% center; }
+            }
+            /* 4. Gold glow pulse */
+            @keyframes goldPulse {
+                0%, 100% { text-shadow: 0 1px 12px rgba(0,0,0,0.6), 0 0 0px rgba(252,211,77,0); }
+                50%       { text-shadow: 0 1px 12px rgba(0,0,0,0.6), 0 0 20px rgba(252,211,77,0.5); }
+            }
+
+            .hero-text-block {
+                animation: heroEntrance 0.5s ease forwards, premiumFloat 5s ease-in-out 0.6s infinite;
+                will-change: transform;
+            }
+            .hero-welcome-word {
+                display: inline-block;
+                animation: heroEntrance 0.4s ease 0.1s both;
+                color: #ffffff;
+            }
+            .hero-name {
+                display: inline-block;
+                background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 40%, #f9a8d4 70%, #60a5fa 100%);
+                background-size: 200% auto;
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                animation: heroEntrance 0.4s ease 0.25s both, shimmerSweep 4s linear 1s infinite;
+                will-change: background-position;
+                cursor: default;
+                transition: transform 0.3s ease;
+            }
+            .hero-name:hover {
+                transform: scale(1.04);
+                filter: drop-shadow(0 0 16px rgba(167,139,250,0.7));
+            }
+            .hero-subtitle {
+                color: #fcd34d;
+                font-weight: 600;
+                letter-spacing: 0.5px;
+                animation: heroEntrance 0.4s ease 0.4s both, goldPulse 3s ease-in-out 1s infinite;
+                will-change: text-shadow;
+            }
+            </style>
+
+            <div class="hero-text-block">
+                <h1 style="font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; letter-spacing: -1px; text-shadow: 0 2px 20px rgba(0,0,0,0.6); margin-bottom: 1rem; line-height:1.2;">
+                    <span class="hero-welcome-word">Welcome</span><br>
+                    <span class="hero-name">Mr. Prathap Avula</span>
+                </h1>
+                <p class="hero-subtitle" style="font-size: 1.1rem; text-shadow: 0 1px 12px rgba(0,0,0,0.6);">
+                    to Sri Vijayalakshmi Footwear Inventory System
+                </p>
+            </div>
         </div>
     </div>
     
