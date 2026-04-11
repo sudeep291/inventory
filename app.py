@@ -166,6 +166,10 @@ def factory_reset():
     if not session.get('logged_in'):
         return redirect(url_for('login'))
         
+    # Security Guard: Require the owner password as a key to execute the wipe
+    if request.args.get('confirm') != OWNER_PASSWORD:
+        return "ACCESS DENIED: To prevent accidental wipes, you must provide your password as a confirmation key in the URL. Example: /admin/factory_reset?confirm=YOUR_PASSWORD", 403
+        
     conn = get_db()
     if not conn: return "Database connection error", 500
     
