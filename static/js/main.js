@@ -16,21 +16,30 @@ function showToast(message) {
     setTimeout(() => { toast.classList.remove("show"); }, 3000);
 }
 
-// Function for visual success feedback sequence
+// Function for visual success feedback sequence (Enterprise Auto-Refresh Layer)
 function playSuccessSequence(containerId, message, callback) {
+    // 📳 HAPTIC FEEDBACK: Premium vibration confirming native action
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80]);
+
     const container = document.getElementById(containerId);
-    const originalHTML = container.innerHTML;
-    container.innerHTML = `
-        <div class="success-trigger">
-            <div class="check-icon">✓</div>
-            <h2 style="color:#166534; font-weight:700">${message}</h2>
-        </div>
-    `;
-    setTimeout(() => {
-        container.style.display = 'none';
-        container.innerHTML = originalHTML; // restore DOM layout invisibly
-        if(callback) callback();
-    }, 2000);
+    if (!container) return;
+    
+    // Auto-Refresh Logic: Let the callback finish fetching logic, then immediately sync the UI
+    const executeAutoRefresh = async () => {
+        container.innerHTML = `
+            <div class="success-trigger">
+                <div class="check-icon">✓</div>
+                <h2 style="color:#166534; font-weight:700">${message}</h2>
+            </div>
+        `;
+        
+        if (callback) await callback();
+        
+        setTimeout(() => {
+            window.location.reload(); // ⚡ Speedy Global Database Sync
+        }, 1500); 
+    };
+    executeAutoRefresh();
 }
 
 // Enterprise Global Fetch Wrapper (Zero-Silence Infrastructure)
@@ -851,3 +860,58 @@ function resyncUpdateSold() {
         soldSpan.textContent = '?0.00';
     }
 }
+
+/* ==================================
+   APK PULL-TO-REFRESH (Premium Mobile UX)
+================================== */
+document.addEventListener('DOMContentLoaded', () => {
+    const ptrHTML = `
+    <div id="ptr-indicator">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+    </div>`;
+    document.body.insertAdjacentHTML('afterbegin', ptrHTML);
+
+    let startY = 0;
+    let isPulling = false;
+    const ptrIndicator = document.getElementById('ptr-indicator');
+
+    document.addEventListener('touchstart', (e) => {
+        if (window.scrollY === 0) {
+            startY = e.touches[0].clientY;
+            isPulling = true;
+        }
+    }, {passive: true});
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isPulling) return;
+        const currentY = e.touches[0].clientY;
+        const diff = currentY - startY;
+
+        if (diff > 0 && window.scrollY === 0) {
+            // Add slight resistance to feel premium
+            const translateY = Math.min(diff * 0.4, 60); 
+            ptrIndicator.style.top = `${-50 + translateY}px`;
+            ptrIndicator.querySelector('svg').style.transform = `rotate(${diff * 2}deg)`;
+        }
+    }, {passive: true});
+
+    document.addEventListener('touchend', (e) => {
+        if (!isPulling) return;
+        isPulling = false;
+        
+        const endY = e.changedTouches[0].clientY;
+        const pullDistance = endY - startY;
+
+        if (pullDistance > 120 && window.scrollY === 0) {
+            // Trigger Refresh
+            document.body.classList.add('ptr-refreshing');
+            if (navigator.vibrate) navigator.vibrate(40);
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        } else {
+            // Reset
+            ptrIndicator.style.top = '-50px';
+        }
+    });
+});
