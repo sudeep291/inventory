@@ -3,6 +3,8 @@ import os
 import datetime
 import decimal
 import traceback
+import base64
+import json
 from flask.json.provider import DefaultJSONProvider
 from dotenv import load_dotenv
 from werkzeug.utils import secure_filename
@@ -303,10 +305,14 @@ def api_add_product():
     if image and image.filename:
         if not allowed_file(image.filename):
             return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
-        filename = secure_filename(image.filename)
-        path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        image.save(path)
-        image_path = f"images/{filename}"
+        
+        # MNC Professional Tier: Store image content as Base64 to ensure persistence across ephemeral cloud deployments
+        img_content = image.read()
+        if len(img_content) > 2 * 1024 * 1024:  # 2MB Limit
+             return jsonify({"error": "Image too large! Maximum 2MB allowed for database storage."}), 400
+        
+        b64_str = base64.b64encode(img_content).decode('utf-8')
+        image_path = f"data:{image.content_type};base64,{b64_str}"
         
     try:
         import json
@@ -341,30 +347,22 @@ def api_update_product_image(id):
     if not allowed_file(image.filename):
         return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
         
-    filename = secure_filename(image.filename)
-    path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    image.save(path)
-    image_path = f"images/{filename}"
-    
-    conn = get_db()
-    cursor = conn.cursor()
     try:
-        # Fetch old image path for cleanup (Server Stewardship)
-        cursor.execute("SELECT image_path FROM Products WHERE id = %s", (id,))
-        old_row = cursor.fetchone()
-        if old_row and old_row['image_path']:
-            old_full_path = os.path.join('static', old_row['image_path'])
-            if os.path.exists(old_full_path):
-                try: 
-                    os.remove(old_full_path)
-                    print(f"CLEANUP: Deleted old image {old_row['image_path']}")
-                except: pass
+        # MNC Professional Tier: Encode to Base64 for database-level persistence
+        img_content = image.read()
+        if len(img_content) > 2 * 1024 * 1024:
+            return jsonify({"error": "Image too large! Maximum 2MB allowed."}), 400
+            
+        b64_str = base64.b64encode(img_content).decode('utf-8')
+        image_data_uri = f"data:{image.content_type};base64,{b64_str}"
         
-        cursor.execute("UPDATE Products SET image_path = %s WHERE id = %s", (image_path, id))
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE Products SET image_path = %s WHERE id = %s", (image_data_uri, id))
         conn.commit()
-        return jsonify({"success": True, "image_path": image_path})
+        return jsonify({"success": True, "image_path": image_data_uri})
     except Exception as e:
-        conn.rollback()
+        if 'conn' in locals() and conn: conn.rollback()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/products/<int:id>/image/remove', methods=['POST'])
@@ -695,16 +693,18 @@ def record_weekly_snapshot():
     try:
         cursor = conn.cursor()
         
-        cursor.execute("SELECT COALESCE(SUM(quantity), 0) as pairs FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
+        # Net Accounting: Subtract quantity for RETURN status
+        cursor.execute("SELECT COALESCE(SUM(CASE WHEN status='SALE' THEN quantity ELSE -quantity END), 0) as pairs FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_pairs_sold = row['pairs'] if row and 'pairs' in row else 0
         
-        cursor.execute("SELECT ROUND(COALESCE(SUM(sold_price * quantity), 0), 2) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
+        # Net Revenue: Subtract sold_price * quantity for RETURN status
+        cursor.execute("SELECT ROUND(COALESCE(SUM(CASE WHEN status='SALE' THEN sold_price * quantity ELSE -(sold_price * quantity) END), 0), 2) as rev FROM Sales WHERE sale_date >= CURRENT_DATE - INTERVAL '7 days' AND sale_date < CURRENT_DATE")
         row = cursor.fetchone()
         total_rev = row['rev'] if row and 'rev' in row else 0
         
         cursor.execute("""
-            SELECT ROUND(COALESCE(SUM((s.sold_price - p.selling_price) * s.quantity), 0), 2) as profit
+            SELECT ROUND(COALESCE(SUM(CASE WHEN s.status='SALE' THEN (s.sold_price - p.selling_price) * s.quantity ELSE -((s.sold_price - p.selling_price) * s.quantity) END), 0), 2) as profit
             FROM Sales s JOIN Products p ON s.product_id = p.id
             WHERE s.sale_date >= CURRENT_DATE - INTERVAL '7 days' AND s.sale_date < CURRENT_DATE
         """)

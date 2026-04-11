@@ -108,7 +108,7 @@ async function loadOverviewTable() {
         if (p.image_path) {
             imageSectionHTML = `
             <div class="shimmer" style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border);" onmouseenter="this.querySelector('.upload-overlay').style.opacity='1'; this.querySelector('.delete-img-btn').style.opacity='1'" onmouseleave="this.querySelector('.upload-overlay').style.opacity='0'; this.querySelector('.delete-img-btn').style.opacity='0'" onclick="triggerImageUpload(${p.id})">
-                <img class="prod-img lazy-img" data-src="/static/${p.image_path}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;">
+                <img class="prod-img lazy-img" data-src="${p.image_path ? (p.image_path.startsWith('data:') ? p.image_path : '/static/' + p.image_path) : 'https://via.placeholder.com/300x200?text=No+Image'}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;">
                 
                 <div class="fallback-icon" id="fallback-${p.id}" style="display:none; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary);">
                     <span style="font-size:3rem; margin-bottom:0.5rem;">📁</span>
@@ -231,7 +231,7 @@ async function searchSellProduct() {
         sellImg.classList.remove('img-loaded');
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
         optimizeImage(sellImg);
-        sellImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
+        sellImg.src = encodedPath ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${encodedPath}`) : 'https://via.placeholder.com/300x200?text=No+Image';
     }
 
     selectedSellProductMRP = prod.mrp;
@@ -349,26 +349,27 @@ async function searchUpdateProduct() {
         const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
         // Use optimizeImage to attach listeners without overriding HTML attributes
         optimizeImage(updateImg);
-        updateImg.src = encodedPath ? `/static/${encodedPath}` : 'https://via.placeholder.com/300x200?text=No+Image';
+        updateImg.src = encodedPath ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${encodedPath}`) : 'https://via.placeholder.com/300x200?text=No+Image';
     }
     
     const sizesContainer = document.getElementById('updateResSizes');
     sizesContainer.innerHTML = '';
     prod.sizes.forEach(s => {
         const row = document.createElement('div');
+        row.className = 'update-row';
         row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
         row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
         
         row.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:0.4rem;">
-                <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div style="display:flex; align-items:center; gap:0.75rem;">
+                <label class="return-toggle" data-sizeid="${s.id}" style="margin:0;">
+                    <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
+                    <span>🔄 Return</span>
+                </label>
+                <div style="display:flex; flex-direction:column; gap:0.1rem;">
                     <strong style="color:#1e293b; font-size:1.1rem">UK ${s.size}</strong> 
                     <span style="color:#64748b; font-size:0.85rem; font-weight:600">Stock: ${s.stock}</span>
                 </div>
-                <label class="return-toggle" data-sizeid="${s.id}">
-                    <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.parentElement.nextElementSibling.querySelector('.batch-update-val')); validateBatchBtn()">
-                    <span>🔄 Return</span>
-                </label>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
@@ -387,14 +388,18 @@ async function searchUpdateProduct() {
 }
 
 function handleRowReturnUI(input) {
-    const row = input.closest('div').parentElement;
+    if(!input) return;
+    const row = input.closest('.update-row');
+    if(!row) return;
     const priceInput = row.querySelector('.batch-update-price');
     const returnCheck = row.querySelector('.is-return-check');
-    if (input.value > 0 && returnCheck.checked) {
-        priceInput.style.display = 'block';
-        if (!priceInput.value) priceInput.value = parseFloat(input.dataset.targetsp).toFixed(2);
-    } else {
-        priceInput.style.display = 'none';
+    if (priceInput && returnCheck) {
+        if (input.value > 0 && returnCheck.checked) {
+            priceInput.style.display = 'block';
+            if (!priceInput.value) priceInput.value = parseFloat(input.dataset.targetsp).toFixed(2);
+        } else {
+            priceInput.style.display = 'none';
+        }
     }
 }
 

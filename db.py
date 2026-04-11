@@ -123,6 +123,9 @@ def init_db():
         """,
         """
         CREATE INDEX IF NOT EXISTS idx_products_active ON Products(is_active);
+        """,
+        """
+        ALTER TABLE Products ALTER COLUMN image_path TYPE TEXT;
         """
     ]
     
