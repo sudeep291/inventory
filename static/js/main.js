@@ -350,6 +350,8 @@ async function searchUpdateProduct() {
     const resName = document.getElementById('updateResName');
     resName.textContent = prod.name;
     resName.style.color = '#ef4444'; 
+    resName.style.fontSize = '3rem';
+    resName.style.fontWeight = '900';
     
     const mrpInput = document.getElementById('updateResCP');
     mrpInput.value = prod.mrp;
@@ -366,22 +368,31 @@ async function searchUpdateProduct() {
     prod.sizes.forEach(s => {
         const row = document.createElement('div');
         row.className = 'update-row';
-        row.style.display = 'flex'; row.style.justifyContent = 'space-between'; row.style.alignItems = 'center';
-        row.style.background = '#ffffff'; row.style.padding = '0.75rem 1rem'; row.style.borderRadius = '8px'; row.style.border = '1px solid #e2e8f0';
+        row.style.display = 'flex'; 
+        row.style.flexWrap = 'wrap'; 
+        row.style.gap = '0.75rem';
+        row.style.justifyContent = 'space-between'; 
+        row.style.alignItems = 'center';
+        row.style.background = '#ffffff'; 
+        row.style.padding = '1rem'; 
+        row.style.borderRadius = '12px'; 
+        row.style.border = '1px solid #e2e8f0';
+        row.style.marginBottom = '0.5rem';
         
         row.innerHTML = `
-            <div style="display:flex; align-items:center; gap:1rem;">
-                <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
+            <div style="display:flex; align-items:center; gap:1rem; flex:1; min-width:180px;">
+                <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return" style="transform: scale(1.1); origin: left center;">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
                     <span class="size-badge-num">R | UK: ${s.size}</span>
                 </label>
                 <div style="display:flex; flex-direction:column; gap:0.1rem;">
-                    <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>
+                    <span style="color:#64748b; font-size:0.8rem; text-transform:uppercase; letter-spacing:0.5px;">Current Stock</span>
+                    <span style="color:#1e293b; font-size:1.1rem; font-weight:800;">${s.stock} Pairs</span>
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:0.5rem;">
-                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
-                <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price}" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-family:'Inter'; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; handleRowReturnUI(this); validateBatchBtn()">
+            <div style="display:flex; align-items:center; gap:0.75rem; justify-content:flex-end; flex:1; min-width:200px;">
+                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:110px; padding:0.6rem; border:2px solid #ef4444; border-radius:8px; font-size:0.9rem; font-weight:700; display:none; animation: fadeUp 0.3s ease;">
+                <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price}" placeholder="+Qty" min="1" style="width:90px; padding:0.6rem; border:2px solid #cbd5e1; border-radius:8px; outline:none; font-family:'Inter'; font-weight:700; font-size:1.1rem; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; handleRowReturnUI(this); validateBatchBtn()">
             </div>
         `;
         sizesContainer.appendChild(row);
