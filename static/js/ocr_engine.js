@@ -21,28 +21,32 @@ async function initOCRWorker() {
 
     if (typeof showToast === 'function') showToast('⏳ Loading OCR engine (first time only, ~10MB)...');
 
-    initPromise = (async () => {
+    initPromise = new Promise(async (resolve) => {
+        // Failsafe timeout in case download hangs from bad network
+        let dlTimeout = setTimeout(() => {
+            console.error('[OCR] Model download timed out.');
+            if (typeof showToast === 'function') showToast('❌ OCR download failed. Please check internet connection.');
+            initPromise = null;
+            resolve(false);
+        }, 60000); // 60s max wait for 10MB on slow 3G
+
         try {
-            // Using default paths for maximum reliability (no CORS issues)
-            ocrWorker = await Tesseract.createWorker('eng', 1, {
-                logger: (m) => {
-                    if (m.status === 'recognizing text') return;
-                    if (m.status.includes('loading')) {
-                        if (typeof showToast === 'function') showToast('⚙️ Starting AI model...');
-                    }
-                }
-            });
+            // Simplest, most stable initialization for v5 natively
+            ocrWorker = await Tesseract.createWorker('eng');
+            
+            clearTimeout(dlTimeout);
             ocrReady = true;
             if (typeof showToast === 'function') showToast('✅ OCR engine ready!');
-            return true;
+            resolve(true);
         } catch (e) {
+            clearTimeout(dlTimeout);
             console.error('[OCR] Worker init failed:', e);
             ocrWorker = null;
             ocrReady = false;
             initPromise = null;
-            return false;
+            resolve(false);
         }
-    })();
+    });
 
     return await initPromise;
 }
