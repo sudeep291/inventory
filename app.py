@@ -48,9 +48,10 @@ def csrf_protected(f):
     def decorated_function(*args, **kwargs):
         if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
             token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
-            if not token or token != session.get('_csrf_token'):
-                logger.warning(f"🛡️ SECURITY: CSRF Token Mismatch/Missing for {request.path}")
-                return jsonify({"error": "Forbidden: CSRF token missing or invalid"}), 403
+            expected = session.get('_csrf_token')
+            if not token or token != expected:
+                logger.warning(f"🛡️ CSRF FAILURE: Path={request.path}, TokenSet={bool(token)}, Match={token == expected}")
+                return jsonify({"error": "Forbidden: Security token missing or invalid. Please refresh and try again."}), 403
         return f(*args, **kwargs)
     return decorated_function
 
@@ -547,60 +548,75 @@ def api_add_product():
     barcode = clean_input(request.form.get('barcode'))
 
     if not all([name, article_no, category_id, sizes_json, mrp, default_discount]):
+        logger.error(f"VAL-FAIL: Missing fields in Add Product. Name={bool(name)}, Art={bool(article_no)}, Cat={bool(category_id)}, Sizes={bool(sizes_json)}")
         return jsonify({"error": "Missing required fields"}), 400
 
     db = get_db()
+    
     try:
-        # Duplicate article_no check
-        existing = db.collection('Products').where(filter=FieldFilter('article_no', '==', article_no)).stream()
-        if any(True for _ in existing):
-            return jsonify({"error": "Article number already exists!"}), 400
-
-        mrp_f = safe_float(mrp)
-        disc_f = safe_float(default_discount)
-        selling_price = round(mrp_f - (mrp_f * disc_f / 100), 2)
-
-        # Get category name
-        cat_doc = db.collection('Categories').document(category_id).get()
-        category_name = cat_doc.to_dict().get('name', '') if cat_doc.exists else ''
-
+        # Pre-process image outside transaction to avoid blocking the DB session
         image_path = None
         if image and image.filename:
             if not allowed_file(image.filename):
                 return jsonify({"error": "Invalid file type. Only JPG, PNG, WEBP allowed."}), 400
             image_path = process_image(image)
 
-        sizes_data = json.loads(sizes_json)
-        # Build sizes array with unique IDs
-        import uuid
-        sizes_list = []
-        for sObj in sizes_data:
-            sizes_list.append({
-                "id": str(uuid.uuid4()),
-                "size": safe_float(sObj['size']),
-                "stock": safe_int(sObj['stock'])
-            })
+        transaction = db.transaction()
 
-        new_ref = db.collection('Products').add({
-            'name': name,
-            'article_no': article_no,
-            'category_id': category_id,
-            'category_name': category_name,
-            'gender': gender,
-            'image_path': image_path,
-            'mrp': mrp_f,
-            'default_discount': disc_f,
-            'selling_price': selling_price,
-            'is_active': True,
-            'barcode': barcode,
-            'sizes': sizes_list
-        })
-        import threading
-        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
-        return jsonify({"success": True})
+        @firestore.transactional
+        def create_product_transaction(transaction, name, article_no, category_id, sizes_json, mrp, default_discount, gender, barcode, image_path):
+            # 1. Duplicate article_no check (CRITICAL for consistency)
+            existing_query = db.collection('Products').where(filter=FieldFilter('article_no', '==', article_no))
+            existing_docs = existing_query.stream(transaction=transaction)
+            if any(True for _ in existing_docs):
+                return {"error": "Article number already exists!"}, 400
+
+            # 2. Get category name
+            cat_ref = db.collection('Categories').document(category_id)
+            cat_snap = cat_ref.get(transaction=transaction)
+            category_name = cat_snap.to_dict().get('name', '') if cat_snap.exists else ''
+
+            import uuid
+            sizes_data = json.loads(sizes_json)
+            sizes_list = [
+                {"id": str(uuid.uuid4()), "size": safe_float(sObj['size']), "stock": safe_int(sObj['stock'])} 
+                for sObj in sizes_data
+            ]
+
+            mrp_f = safe_float(mrp)
+            disc_f = safe_float(default_discount)
+            selling_price = round(mrp_f - (mrp_f * disc_f / 100), 2)
+
+            new_prod_ref = db.collection('Products').document()
+            transaction.set(new_prod_ref, {
+                'name': name,
+                'article_no': article_no,
+                'category_id': category_id,
+                'category_name': category_name,
+                'gender': gender,
+                'image_path': image_path,
+                'mrp': mrp_f,
+                'default_discount': disc_f,
+                'selling_price': selling_price,
+                'is_active': True,
+                'barcode': barcode,
+                'sizes': sizes_list,
+                'created_at': datetime.datetime.now(datetime.timezone.utc)
+            })
+            return {"success": True}, 200
+
+        res, code = create_product_transaction(
+            transaction, name, article_no, category_id, sizes_json, mrp, default_discount, gender, barcode, image_path
+        )
+        
+        if code == 200:
+            import threading
+            threading.Thread(target=enterprise_heartbeat, daemon=True).start()
+        return jsonify(res), code
+
     except Exception as e:
-        logger.error(f"api_add_product error: {e}")
-        return jsonify({"error": str(e)}), 400
+        logger.error(f"FATAL: Product Addition Failed: {e}", exc_info=True)
+        return jsonify({"error": f"Internal Database Error: {str(e)}"}), 500
 
 
 @app.route('/api/products/<string:id>/image', methods=['POST'])
