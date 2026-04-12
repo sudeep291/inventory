@@ -18,6 +18,7 @@ import bleach
 import logging
 
 from google.cloud.firestore_v1.base_query import FieldFilter
+from firebase_admin import firestore
 
 # 🚀 Enterprise Service Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
