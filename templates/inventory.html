@@ -98,11 +98,13 @@
                 </button>
             </div>
             <!-- Barcode Scanner Viewport -->
-            <div id="readerWrapper" style="display:none; margin-top:1.5rem; border-radius:12px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.2); border:2px solid var(--primary);">
+            <div id="readerWrapper" class="scanner-wrapper-premium" style="display:none;">
+                <div class="scanner-inner">
                 <div id="reader" style="width:100%; border:none;"></div>
                 <div style="padding:1rem; text-align:center; background:var(--bg-white);">
                     <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                 </div>
+            </div>
             </div>
         </div>
 

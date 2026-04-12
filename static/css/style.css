@@ -988,3 +988,62 @@ body.dark-theme .return-toggle.active {
 }
 .heatmap-box .sz { font-size: 1.5rem; font-weight: 900; margin-bottom: 0.25rem; }
 .heatmap-box .stats { font-size: 0.85rem; opacity: 0.9; }
+
+/* =====================
+   PREMIUM BARCODE SCANNER
+======================== */
+.scanner-wrapper-premium {
+    position: relative;
+    border-radius: 16px;
+    overflow: hidden;
+    padding: 4px; /* Creates the thick gradient border */
+    background: linear-gradient(135deg, #ec4899, #8b5cf6, #3b82f6);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.3);
+    margin-top: 1.5rem;
+    animation: fadeUp 0.3s ease forwards;
+}
+
+.scanner-inner {
+    background: var(--bg-white);
+    border-radius: 12px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Force override html5-qrcode injected buttons */
+#reader button, #readerAdd button, #reader__dashboard_section_csr button, #readerAdd__dashboard_section_csr button {
+    background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 1rem 2rem !important; /* Huge tap target */
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    margin: 1rem auto !important;
+    cursor: pointer !important;
+    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3) !important;
+    transition: transform 0.1s ease !important;
+    display: block !important;
+    width: 80% !important;
+    max-width: 300px !important;
+}
+
+#reader button:active, #readerAdd button:active {
+    transform: scale(0.95) !important;
+}
+
+/* Hide noisy text and links from the library */
+#reader a, #readerAdd a {
+    display: none !important;
+}
+
+/* Fix dropdown select inside scanner */
+#reader select, #readerAdd select {
+    padding: 0.8rem !important;
+    border-radius: 8px !important;
+    border: 2px solid var(--primary) !important;
+    margin-bottom: 1rem !important;
+    font-size: 1rem !important;
+    width: 90% !important;
+    max-width: 300px !important;
+}
