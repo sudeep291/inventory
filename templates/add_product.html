@@ -19,6 +19,8 @@
                 <div id="readerWrapperAdd" class="scanner-wrapper-premium" style="display:none;">
                     <div class="scanner-inner">
                         <div id="readerAdd" style="width:100%; border:none;"></div>
+                        <!-- OCR Preview: shows uploaded label in scanner area -->
+                        <img id="ocrPreviewAdd" src="" alt="Label Preview" style="display:none; width:100%; max-height:300px; object-fit:contain; padding:0.5rem; background:#f8fafc;">
                         <div style="padding:1rem; text-align:center; background:var(--bg-white);">
                             <!-- OCR Label Reader -->
                             <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
@@ -312,19 +314,28 @@
         if (!file) return;
         this.value = '';
 
+        // Show image preview in the scanner viewport
+        const preview = document.getElementById('ocrPreviewAdd');
+        const readerEl = document.getElementById('readerAdd');
+        const imgURL = URL.createObjectURL(file);
+        preview.src = imgURL;
+        preview.style.display = 'block';
+        if (readerEl) readerEl.style.display = 'none';
+
         await runOCRScan(
             file,
             (extracted) => {
                 showOCRConfirmCard(extracted, (confirmed) => {
-                    // Apply Article No
+                    preview.style.display = 'none';
+                    if (readerEl) readerEl.style.display = 'block';
+                    URL.revokeObjectURL(imgURL);
+
                     const artInput = document.getElementById('addArticleInput');
                     if (artInput && confirmed.articleNo) artInput.value = confirmed.articleNo;
 
-                    // Apply MRP
                     const mrpInput = document.querySelector('input[name="mrp"]');
                     if (mrpInput && confirmed.mrp) mrpInput.value = confirmed.mrp;
 
-                    // Apply Company Name
                     const nameInput = document.querySelector('input[name="name"]');
                     if (nameInput && confirmed.companyName) nameInput.value = confirmed.companyName;
 
@@ -332,7 +343,6 @@
                     if (confirmed.articleNo && typeof productsCache !== 'undefined') {
                         const existing = productsCache.find(p => p.article_no === confirmed.articleNo);
                         if (existing) {
-                            // Override with trusted local data if it exists
                             if (mrpInput) mrpInput.value = existing.mrp || confirmed.mrp || '';
                             if (nameInput) nameInput.value = existing.name || confirmed.companyName || '';
                             const discInput = document.querySelector('input[name="default_discount"]');
@@ -348,7 +358,12 @@
                     }
                 });
             },
-            (errMsg) => { showToast('❌ ' + errMsg); }
+            (errMsg) => {
+                preview.style.display = 'none';
+                if (readerEl) readerEl.style.display = 'block';
+                URL.revokeObjectURL(imgURL);
+                showToast('❌ ' + errMsg);
+            }
         );
     });
 </script>

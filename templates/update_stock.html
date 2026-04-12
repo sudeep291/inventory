@@ -107,6 +107,8 @@
             <div id="readerWrapperUpdate" class="scanner-wrapper-premium" style="display:none; margin-top:1.5rem;">
                 <div class="scanner-inner">
                     <div id="readerUpdate" style="width:100%; border:none;"></div>
+                    <!-- OCR Preview: shows uploaded label in scanner area -->
+                    <img id="ocrPreviewUpdate" src="" alt="Label Preview" style="display:none; width:100%; max-height:300px; object-fit:contain; padding:0.5rem; background:#f8fafc;">
                     <div style="padding:1rem; text-align:center; background:var(--bg-white);">
                         <!-- OCR Label Reader -->
                         <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
@@ -226,10 +228,22 @@
         if (!file) return;
         this.value = '';
 
+        // Show image preview in the scanner viewport
+        const preview = document.getElementById('ocrPreviewUpdate');
+        const readerEl = document.getElementById('readerUpdate');
+        const imgURL = URL.createObjectURL(file);
+        preview.src = imgURL;
+        preview.style.display = 'block';
+        if (readerEl) readerEl.style.display = 'none';
+
         await runOCRScan(
             file,
             (extracted) => {
                 showOCRConfirmCard(extracted, (confirmed) => {
+                    preview.style.display = 'none';
+                    if (readerEl) readerEl.style.display = 'block';
+                    URL.revokeObjectURL(imgURL);
+
                     if (confirmed.articleNo) {
                         const searchInput = document.getElementById('updateSearchInput');
                         searchInput.value = confirmed.articleNo;
@@ -240,7 +254,12 @@
                     }
                 });
             },
-            (errMsg) => { showToast('❌ ' + errMsg); }
+            (errMsg) => {
+                preview.style.display = 'none';
+                if (readerEl) readerEl.style.display = 'block';
+                URL.revokeObjectURL(imgURL);
+                showToast('❌ ' + errMsg);
+            }
         );
     });
 </script>

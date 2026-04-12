@@ -103,21 +103,22 @@
             <!-- Barcode Scanner Viewport -->
             <div id="readerWrapper" class="scanner-wrapper-premium" style="display:none;">
                 <div class="scanner-inner">
-                <div id="reader" style="width:100%; border:none;"></div>
-                <div style="padding:1rem; text-align:center; background:var(--bg-white);">
-                    <!-- OCR Label Reader -->
-                    <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
-                        <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
-                        <label for="ocrImageInputSell" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3); transition:all 0.2s;">
-                            📋 Read Label (OCR)
-                        </label>
-                        <input type="file" id="ocrImageInputSell" accept=".jpg,.jpeg,.png,.webp" style="display:none;">
+                    <div id="reader" style="width:100%; border:none;"></div>
+                    <!-- OCR Preview: shows uploaded label photo in scanner area -->
+                    <img id="ocrPreviewSell" src="" alt="Label Preview" style="display:none; width:100%; max-height:300px; object-fit:contain; padding:0.5rem; background:#f8fafc;">
+                    <div style="padding:1rem; text-align:center; background:var(--bg-white);">
+                        <!-- OCR Label Reader -->
+                        <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
+                            <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
+                            <label for="ocrImageInputSell" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3); transition:all 0.2s;">
+                                📋 Read Label (OCR)
+                            </label>
+                            <input type="file" id="ocrImageInputSell" accept=".jpg,.jpeg,.png,.webp" style="display:none;">
+                        </div>
+                        <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                     </div>
-                    <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                 </div>
             </div>
-            </div>
-        </div>
 
         <div id="sellResultContainer" style="display:none; padding-top:2rem; border-top:1px solid rgba(255,255,255,0.1)">
             <div class="premium-result-card">
@@ -239,13 +240,25 @@
     document.getElementById('ocrImageInputSell').addEventListener('change', async function() {
         const file = this.files[0];
         if (!file) return;
-        this.value = ''; // Reset so same file can be re-selected
+        this.value = '';
+
+        // Show image preview in the scanner viewport (hide camera feed)
+        const preview = document.getElementById('ocrPreviewSell');
+        const reader = document.getElementById('reader');
+        const imgURL = URL.createObjectURL(file);
+        preview.src = imgURL;
+        preview.style.display = 'block';
+        if (reader) reader.style.display = 'none'; // hide camera while showing image
 
         await runOCRScan(
             file,
             (extracted) => {
-                // Show confirmation card - user must verify before applying
                 showOCRConfirmCard(extracted, (confirmed) => {
+                    // Hide preview, restore camera area
+                    preview.style.display = 'none';
+                    if (reader) reader.style.display = 'block';
+                    URL.revokeObjectURL(imgURL);
+
                     if (confirmed.articleNo) {
                         const searchInput = document.getElementById('sellSearchInput');
                         searchInput.value = confirmed.articleNo;
@@ -256,7 +269,12 @@
                     }
                 });
             },
-            (errMsg) => { showToast('❌ ' + errMsg); }
+            (errMsg) => {
+                preview.style.display = 'none';
+                if (reader) reader.style.display = 'block';
+                URL.revokeObjectURL(imgURL);
+                showToast('❌ ' + errMsg);
+            }
         );
     });
 </script>
