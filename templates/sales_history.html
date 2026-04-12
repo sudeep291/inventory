@@ -4,8 +4,22 @@
     <div class="search-section">
         <h2 style="margin-bottom:1rem">History</h2>
         <p style="color:var(--text-secondary); margin-bottom:2rem">Complete history of all recorded product sales.</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem">
-            <input type="text" id="ledgerSearch" placeholder="Search by Article or Name..." onkeyup="filterLedger()">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap;">
+            <input type="text" id="ledgerSearch" placeholder="Search by Article or Name..." onkeyup="filterLedger()" style="flex:1;">
+            <button type="button" class="btn outline" id="btnScanBarcodeHistory" style="display:flex; align-items:center; gap:0.5rem; color:var(--text-primary); border-color:var(--border);">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 7V4h3m10 0h3v3m0 10v3h-3M4 17v3h3m2-10h6v6H9v-6z"></path></svg>
+                Scan Barcode
+            </button>
+        </div>
+
+        <!-- Barcode Scanner Viewport -->
+        <div id="readerWrapperHistory" class="scanner-wrapper-premium" style="display:none; margin-bottom:2rem;">
+            <div class="scanner-inner">
+                <div id="readerHistory" style="width:100%; border:none;"></div>
+                <div style="padding:1rem; text-align:center; background:var(--bg-white);">
+                    <button type="button" class="btn danger" onclick="stopBarcodeScannerHistory()" style="padding:0.4rem 1rem;">Cancel Scan</button>
+                </div>
+            </div>
         </div>
     </div>
     
@@ -96,6 +110,47 @@
             const text = row.innerText.toLowerCase();
             row.style.display = text.includes(term) ? '' : 'none';
         });
+    }
+</script>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<script>
+    // Native Barcode Scanner Integration for History Audit
+    let html5QrcodeScannerHistory = null;
+
+    document.getElementById('btnScanBarcodeHistory').addEventListener('click', () => {
+        document.getElementById('readerWrapperHistory').style.display = 'block';
+        
+        if (!html5QrcodeScannerHistory) {
+            html5QrcodeScannerHistory = new Html5QrcodeScanner(
+                "readerHistory",
+                { fps: 10, qrbox: {width: 250, height: 150}, aspectRatio: 1.0 },
+                /* verbose= */ false
+            );
+            
+            html5QrcodeScannerHistory.render(onScanSuccessHistory, onScanFailureHistory);
+        }
+    });
+
+    function stopBarcodeScannerHistory() {
+        document.getElementById('readerWrapperHistory').style.display = 'none';
+        if (html5QrcodeScannerHistory) {
+            try {
+                html5QrcodeScannerHistory.clear();
+            } catch(e) {}
+            html5QrcodeScannerHistory = null;
+        }
+    }
+
+    async function onScanSuccessHistory(decodedText, decodedResult) {
+        stopBarcodeScannerHistory();
+        const searchInput = document.getElementById('ledgerSearch');
+        searchInput.value = decodedText;
+        showToast("Filtering history for: " + decodedText);
+        filterLedger(); // Trigger the table filter instantly
+    }
+
+    function onScanFailureHistory(error) {
+        // handle scan failure silently
     }
 </script>
 {% endblock %}
