@@ -16,18 +16,17 @@ async function initOCRWorker(silent = false) {
     
     // If already doing startup, wait for it to finish instead of failing
     if (initPromise) {
-        if (!silent && typeof showToast === 'function') showToast('⏳ AI engine is starting up, please wait...');
+        if (!silent && typeof showToast === 'function') showToast('⏳ AI engine is starting up (may take ~5-10s the very first time)...');
         return await initPromise;
     }
 
-    if (!silent && typeof showToast === 'function') showToast('⏳ Initializing OCR AI engine (loading into memory)...');
+    if (!silent && typeof showToast === 'function') showToast('⏳ Initializing OCR AI engine into memory (takes ~2 seconds)...');
 
     initPromise = new Promise(async (resolve) => {
         // Failsafe timeout in case memory load hangs
         let dlTimeout = setTimeout(() => {
             console.error('[OCR] Engine initialization timed out.');
-            if (!silent && typeof showToast === 'function') showToast('❌ OCR initialization failed. Please refresh the page.');
-
+            if (!silent && typeof showToast === 'function') showToast('❌ OCR initialization failed (waited 60s). Please refresh the page.');
             initPromise = null;
             resolve(false);
         }, 60000); // 60s max wait for 10MB on slow 3G
@@ -38,7 +37,7 @@ async function initOCRWorker(silent = false) {
             
             clearTimeout(dlTimeout);
             ocrReady = true;
-            if (!silent && typeof showToast === 'function') showToast('✅ OCR AI engine is now ready to scan!');
+            if (!silent && typeof showToast === 'function') showToast('✅ OCR AI engine is fully loaded and ready to scan!');
             resolve(true);
         } catch (e) {
             clearTimeout(dlTimeout);
@@ -93,11 +92,11 @@ async function runOCRScan(imageFile, onResult, onError) {
     // Initialize worker if not ready
     const ready = await initOCRWorker();
     if (!ready || !ocrWorker) {
-        onError('OCR engine could not start. Check your internet connection and try again.');
+        onError('OCR engine could not start. Please refresh the page and try again.');
         return;
     }
 
-    if (typeof showToast === 'function') showToast('🔍 Reading label text...');
+    if (typeof showToast === 'function') showToast('🔍 Reading label text... (takes ~1 to 3 seconds)');el text...');
 
     // 45-second timeout guard
     let timedOut = false;
