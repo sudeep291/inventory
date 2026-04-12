@@ -5,7 +5,7 @@
     <div class="form-container" style="margin-bottom: 2rem;">
         <h2 style="margin-bottom:1.5rem">Create New Product</h2>
         <form id="productForm" enctype="multipart/form-data">
-            <div class="form-group"><label>Product Name</label><input type="text" name="name" required></div>
+            <div class="form-group"><label>Company Name</label><input type="text" name="name" required></div>
             <div class="form-group">
                 <label>Article No. (Barcode ID)</label>
                 <div style="display:flex; gap:1rem; flex-wrap: wrap;">
@@ -245,7 +245,25 @@
         searchInput.value = decodedText;
         showToast("Barcode Scanned: " + decodedText);
 
-        // Intelligent Auto-Fill: Try fetching product name from Global Barcode DB
+        // Intelligent Local Auto-Fill: Search your own inventory history first
+        const matchedProduct = (typeof productsCache !== 'undefined') ? productsCache.find(p => p.article_no === decodedText) : null;
+        
+        if (matchedProduct) {
+            const nameInput = document.querySelector('input[name="name"]');
+            const mrpInput = document.querySelector('input[name="mrp"]');
+            const discInput = document.querySelector('input[name="default_discount"]');
+            const catSelect = document.getElementById('categorySelect');
+
+            if (nameInput) nameInput.value = matchedProduct.name || '';
+            if (mrpInput) mrpInput.value = matchedProduct.mrp || '';
+            if (discInput) discInput.value = matchedProduct.default_discount || 0;
+            if (catSelect) catSelect.value = matchedProduct.category_id || "";
+
+            showToast("Existing Product Data Auto-Filled!");
+            return; // Exit if matched locally
+        }
+
+        // Fallback to Global Database if not found in your inventory
         showToast("Looking up Global Database...");
         try {
             const apiRes = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${decodedText}`);
@@ -256,10 +274,10 @@
                 const nameInput = document.querySelector('input[name="name"]');
                 if (nameInput) {
                     nameInput.value = item.title || item.brand || '';
-                    showToast("Product Name Auto-Filled!");
+                    showToast("Global Branding Auto-Filled!");
                 }
             } else {
-                showToast("Not registered on global DB. Please enter Name manually.");
+                showToast("New Product Detected. Please enter manually.");
             }
         } catch(e) {
             console.log("Global DB lookup failed", e);

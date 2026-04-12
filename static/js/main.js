@@ -169,7 +169,7 @@ async function loadOverviewTable() {
             ${imageSectionHTML}
             <div class="prod-info">
                 <div class="prod-header">
-                    <h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${p.name}">${p.name}</h3>
+                    <h3 style="white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" class="value-mix" title="${p.name}">${p.name}</h3>
                     <span class="badge" style="margin-left:0.5rem">${p.category_name}</span>
                 </div>
                 <div class="prod-meta"><strong>Art:</strong> <span class="val">${p.article_no}</span></div>
@@ -393,7 +393,7 @@ async function searchUpdateProduct() {
     currentUpdateProductId = prod.id;
     const resName = document.getElementById('updateResName');
     resName.textContent = prod.name;
-    resName.style.color = '#ef4444'; // MNC Professional: Luminous Red
+    resName.style.color = '#dc2626'; // Brand Focus: Luminous Red
     resName.style.fontSize = '2.5rem';
     resName.style.fontWeight = '900';
     // Populate Dynamic MRP field (Luminous Input)
