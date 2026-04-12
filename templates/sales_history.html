@@ -4,11 +4,18 @@
     <div class="search-section">
         <h2 style="margin-bottom:1rem">History</h2>
         <p style="color:var(--text-secondary); margin-bottom:2rem">Complete history of all recorded product sales.</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap:1.5rem; flex-wrap:wrap;">
-            <input type="text" id="ledgerSearch" placeholder="Search by Article or Name..." onkeyup="filterLedger()" style="flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; gap:1rem; flex-wrap:wrap;">
+            <div style="flex:1; display:flex; gap:0.5rem; position:relative;">
+                <input type="text" id="ledgerSearch" placeholder="Search Article or Name..." autocomplete="off" style="flex:1;">
+                <div id="ledgerSuggestions" class="search-suggestions-box"></div>
+                <button type="button" class="btn-search-mix" onclick="filterLedger()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right:0.5rem"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <span>Search</span>
+                </button>
+            </div>
             <button type="button" class="btn-scan-mix" id="btnScanBarcodeHistory">
                 <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 7V4h3m10 0h3v3m0 10v3h-3M4 17v3h3m2-10h6v6H9v-6z"></path></svg>
-                <span>Scan Barcode</span>
+                <span>Scan Box</span>
             </button>
         </div>
 
@@ -47,8 +54,51 @@
 {% endblock %}
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', loadLedger);
-    
+    document.addEventListener('DOMContentLoaded', () => {
+        loadLedger();
+        
+        // --- History Live Suggestions Logic ---
+        const ledgerInp = document.getElementById('ledgerSearch');
+        const ledgerSugg = document.getElementById('ledgerSuggestions');
+
+        ledgerInp.addEventListener('input', () => {
+            const q = ledgerInp.value.trim().toLowerCase();
+            if (q.length < 1) { 
+                ledgerSugg.style.display = 'none'; 
+                filterLedger(); // Reset filter on clear
+                return; 
+            }
+            
+            // Extract unique article names from table to suggest
+            const currentRows = Array.from(document.querySelectorAll('#ledgerBody tr'));
+            const rowArticles = currentRows
+                .map(tr => tr.cells[1]?.innerText)
+                .filter((v, i, a) => v && a.indexOf(v) === i && v.toLowerCase().includes(q));
+
+            if (rowArticles.length > 0) {
+                ledgerSugg.innerHTML = rowArticles.slice(0, 5).map(art => `
+                    <div class="suggestion-item" onclick="selectLedgerSuggestion('${art}')">
+                        <span class="art-no">${art}</span>
+                    </div>
+                `).join('');
+                ledgerSugg.style.display = 'block';
+            } else {
+                ledgerSugg.style.display = 'none';
+            }
+            filterLedger(); // Filter live as they type
+        });
+
+        window.selectLedgerSuggestion = (art) => {
+            ledgerInp.value = art;
+            ledgerSugg.style.display = 'none';
+            filterLedger();
+        };
+
+        document.addEventListener('click', (e) => {
+            if (!ledgerInp.contains(e.target)) ledgerSugg.style.display = 'none';
+        });
+    });
+
     async function loadLedger() {
         try {
             const res = await fetch('/api/sales_history');
@@ -114,48 +164,53 @@
 </script>
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
-    // Native Barcode Scanner Integration for History Audit
-    let html5QrcodeScannerHistory = null;
+    // Improved 1-Click History Audit Scanner (Purity Filter)
+    let historyScanner = null;
 
-    document.getElementById('btnScanBarcodeHistory').addEventListener('click', () => {
+    const cleanBarcode = (text) => {
+        let cleaned = text.replace(/[^\d]/g, "");
+        if (cleaned.startsWith("890") && cleaned.length > 13) cleaned = cleaned.substring(0, 13);
+        return cleaned;
+    };
+
+    document.getElementById('btnScanBarcodeHistory').addEventListener('click', async () => {
         document.getElementById('readerWrapperHistory').style.display = 'block';
+        if (!historyScanner) historyScanner = new Html5Qrcode('readerHistory');
         
-        if (!html5QrcodeScannerHistory) {
-            html5QrcodeScannerHistory = new Html5QrcodeScanner(
-                "readerHistory",
+        try {
+            await historyScanner.start(
+                { facingMode: 'environment' }, 
                 { 
-                    fps: 10, 
-                    qrbox: {width: 300, height: 200}, 
-                    aspectRatio: 1.0,
-                    videoConstraints: { facingMode: "environment" }
+                    fps: 20, 
+                    qrbox: { width: 300, height: 200 },
+                    formatsToSupport: [ 
+                        Html5QrcodeSupportedFormats.EAN_13, 
+                        Html5QrcodeSupportedFormats.CODE_128 
+                    ]
                 },
-                /* verbose= */ false
+                (decodedText) => {
+                    stopBarcodeScannerHistory();
+                    const finalCode = cleanBarcode(decodedText);
+                    document.getElementById('ledgerSearch').value = finalCode;
+                    showToast("✅ Auditing Barcode: " + finalCode);
+                    filterLedger();
+                },
+                (err) => {}
             );
-            
-            html5QrcodeScannerHistory.render(onScanSuccessHistory, onScanFailureHistory);
+        } catch (err) {
+            showToast("❌ Scanner Error");
+            document.getElementById('readerWrapperHistory').style.display = 'none';
         }
     });
 
     function stopBarcodeScannerHistory() {
         document.getElementById('readerWrapperHistory').style.display = 'none';
-        if (html5QrcodeScannerHistory) {
-            try {
-                html5QrcodeScannerHistory.clear();
-            } catch(e) {}
-            html5QrcodeScannerHistory = null;
+        if (historyScanner) {
+            historyScanner.stop().catch(() => {}).finally(() => {
+                historyScanner = null;
+                document.getElementById('readerHistory').innerHTML = '';
+            });
         }
-    }
-
-    async function onScanSuccessHistory(decodedText, decodedResult) {
-        stopBarcodeScannerHistory();
-        const searchInput = document.getElementById('ledgerSearch');
-        searchInput.value = decodedText;
-        showToast("Filtering history for: " + decodedText);
-        filterLedger(); // Trigger the table filter instantly
-    }
-
-    function onScanFailureHistory(error) {
-        // handle scan failure silently
     }
 </script>
 {% endblock %}
