@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, g, send_from_directory
 import os
 import datetime
 import decimal
@@ -16,7 +16,7 @@ from PIL import Image
 import io
 import bleach
 import logging
-from google.cloud.firestore_v1 import SERVER_TIMESTAMP
+
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 # 🚀 Enterprise Service Logging
@@ -166,7 +166,7 @@ def fb_get_sales(db, status_filter=None, date_filter=None, days=None):
     
     docs = query.stream()
     sales = []
-    now = datetime.datetime.utcnow()
+    now = datetime.datetime.now(datetime.timezone.utc)
     today_start = datetime.datetime(now.year, now.month, now.day)
     week_start = today_start - datetime.timedelta(days=7)
 
@@ -241,6 +241,10 @@ def add_security_headers(response):
 def enterprise_ping():
     return "SYSTEM_HEALTHY", 200
 
+@app.route('/service-worker.js')
+def serve_sw():
+    return send_from_directory('static', 'service-worker.js', mimetype='application/javascript')
+
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -293,8 +297,8 @@ def login():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
     record = _LOGIN_LOCKOUT.get(ip, {"attempts": 0, "locked_until": None})
 
-    if record["locked_until"] and datetime.datetime.utcnow() < record["locked_until"]:
-        remaining = int((record["locked_until"] - datetime.datetime.utcnow()).total_seconds() / 60) + 1
+    if record["locked_until"] and datetime.datetime.now(datetime.timezone.utc) < record["locked_until"]:
+        remaining = int((record["locked_until"] - datetime.datetime.now(datetime.timezone.utc)).total_seconds() / 60) + 1
         return render_template('login.html', error=f"Too many failed attempts. Try again in {remaining} minute(s).")
 
     if request.method == 'POST':
@@ -315,14 +319,14 @@ def login():
             record["attempts"] = record.get("attempts", 0) + 1
             attempts_left = MAX_ATTEMPTS - record["attempts"]
             if record["attempts"] >= MAX_ATTEMPTS:
-                record["locked_until"] = datetime.datetime.utcnow() + datetime.timedelta(minutes=LOCKOUT_MINUTES)
+                record["locked_until"] = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=LOCKOUT_MINUTES)
                 logger.warning(f"🔒 SECURITY: IP {ip} locked out after {MAX_ATTEMPTS} failed login attempts.")
                 error = f"Access locked for {LOCKOUT_MINUTES} minutes due to too many wrong attempts."
             else:
                 error = f"Invalid password. {attempts_left} attempt(s) remaining before lockout."
             _LOGIN_LOCKOUT[ip] = record
             expired = [k for k, v in _LOGIN_LOCKOUT.items()
-                       if v["locked_until"] and datetime.datetime.utcnow() > v["locked_until"]
+                       if v["locked_until"] and datetime.datetime.now(datetime.timezone.utc) > v["locked_until"]
                        and v["attempts"] >= MAX_ATTEMPTS]
             for k in expired:
                 _LOGIN_LOCKOUT.pop(k, None)
@@ -661,9 +665,12 @@ def api_stock_adjust():
                 'discount_applied': safe_float(discount_applied),
                 'selling_price': safe_float(prod_data.get('selling_price')),
                 'mrp': safe_float(prod_data.get('mrp')),
-                'sale_date': SERVER_TIMESTAMP,
+                'sale_date': datetime.datetime.now(datetime.timezone.utc),
                 'status': 'SALE'
             })
+            
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
 
         return jsonify({"success": True})
     except Exception as e:
@@ -721,7 +728,7 @@ def api_adjust_stock_batch():
                         'sold_price': refund_px,
                         'selling_price': safe_float(prod_data.get('selling_price')),
                         'mrp': safe_float(prod_data.get('mrp')),
-                        'sale_date': SERVER_TIMESTAMP,
+                        'sale_date': datetime.datetime.now(datetime.timezone.utc),
                         'status': 'RETURNED'
                     })
             else:
@@ -746,7 +753,7 @@ def api_adjust_stock_batch():
                                     'sold_price': refund_px,
                                     'selling_price': safe_float(prod_data.get('selling_price')),
                                     'mrp': safe_float(prod_data.get('mrp')),
-                                    'sale_date': SERVER_TIMESTAMP,
+                                    'sale_date': datetime.datetime.now(datetime.timezone.utc),
                                     'status': 'RETURNED'
                                 })
                             break
@@ -838,8 +845,8 @@ def get_consolidated_analytics():
     if not db: return None
 
     try:
-        now = datetime.datetime.utcnow()
-        today_start = datetime.datetime(now.year, now.month, now.day)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        today_start = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
         week_start = today_start - datetime.timedelta(days=7)
 
         # Fetch all sales
@@ -1057,9 +1064,9 @@ def record_weekly_snapshot():
         return
 
     try:
-        now = datetime.datetime.utcnow()
-        week_start = datetime.datetime(now.year, now.month, now.day) - datetime.timedelta(days=7)
-        today_start = datetime.datetime(now.year, now.month, now.day)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        week_start = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc) - datetime.timedelta(days=7)
+        today_start = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
 
         sales_docs = list(db.collection('Sales').stream())
 
@@ -1090,7 +1097,7 @@ def record_weekly_snapshot():
         )
 
         db.collection('WeeklyMetrics').add({
-            'snapshot_date': SERVER_TIMESTAMP,
+            'snapshot_date': datetime.datetime.now(datetime.timezone.utc),
             'total_pairs_sold': total_pairs,
             'total_revenue': round(total_rev, 2),
             'net_profit': round(net_prof, 2),
