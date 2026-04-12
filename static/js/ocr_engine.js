@@ -56,22 +56,67 @@ async function initOCRWorker(silent = false) {
 }
 
 /**
- * Extract label data using IS 6721 Indian footwear label patterns
+ * Extract label data using IS 6721 Indian footwear label patterns & broad heuristics
  */
 function extractLabelData(rawText) {
     const text = rawText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    const cleanUpperText = text.toUpperCase().replace(/[^A-Z0-9\- ]/g, ' ').split(/\s+/);
     console.log('[OCR] Raw text:\n', rawText);
 
     const result = { articleNo: null, mrp: null, companyName: null, confidence: 'low' };
 
-    // Article No: e.g. WG5511, RJ2034, NB-1122
-    const articlePatterns = [
-        /\b([A-Z]{2,5}-?\d{3,6})\b/,
-        /\b([A-Z]\d{4,6})\b/,
-    ];
-    for (const pat of articlePatterns) {
-        const m = text.match(pat);
-        if (m) { result.articleNo = m[1].toUpperCase().replace(/\s/g, ''); break; }
+    // 1. SMART DB CHECK: If we already have this exact word in our DB, guarantee match!
+    if (typeof productsCache !== 'undefined' && productsCache) {
+        for (const w of cleanUpperText) {
+            if (w.length >= 2 && productsCache.some(p => p.article_no && p.article_no.toUpperCase() === w)) {
+                result.articleNo = w;
+                break;
+            }
+        }
+    }
+
+    // 2. BROAD REGEX: If not in DB, use highly flexible alphanumeric regexes
+    if (!result.articleNo) {
+        const articlePatterns = [
+            /\b([A-Z]{1,5}-?\d{2,7})\b/i,        // WG5511, V12, ABC-1234
+            /\b(\d{2,7}-?[A-Z]{1,5})\b/i,        // 1234-A
+            /\b([A-Z0-9]{3,8}-[A-Z0-9]{2,6})\b/i, // CW2288-111
+            /\b(\d{4,8})\b/                      // Pure numbers: 371128
+        ];
+        for (const pat of articlePatterns) {
+            const m = text.match(pat);
+            if (m) { 
+                const candidate = m[1].toUpperCase();
+                // Ignore standard Indian ISO sizes and current years
+                if (candidate !== '6721' && candidate !== '15298' && !/^202\d$/.test(candidate)) {
+                    result.articleNo = candidate.replace(/\s/g, ''); 
+                    break; 
+                }
+            }
+        }
+    }
+
+    // 3. AGGRESSIVE FALLBACK: Any word >= 2 chars that isn't a known noise word or simple size
+    if (!result.articleNo) {
+        const excluded = new Set([
+            'MRP', 'SIZE', 'INCL', 'TAXES', 'PAIR', 'NET', 'QTY', 'IS', 'PART', 'STYLE', 'ART', 'NO',
+            'WALKAROO', 'VKC', 'BATA', 'RELAXO', 'SPARX', 'PUMA', 'NIKE', 'ADIDAS',
+            'BLUE', 'BLACK', 'WHITE', 'BROWN', 'GREY', 'RED', 'PINK', 'GREEN', 'YELLOW',
+            'MENS', 'WOMENS', 'KIDS', 'LADIES', 'GENTS',
+            'MANUFACTURED', 'MARKETED', 'CUSTOMER', 'CARE', 'MONTH', 'YEAR', 'DATE'
+        ]);
+
+        for (const w of cleanUpperText) {
+            if (w.length >= 2 && !excluded.has(w)) {
+                // Skip 1 or 2 digit numbers (these are usually Shoe Sizes like 07, 8, 10, UK 9)
+                if (/^\d{1,2}$/.test(w)) continue; 
+                if (w === '6721' || w === '15298') continue;
+                if (/^202\d$/.test(w)) continue; // skip years like 2024
+                
+                result.articleNo = w;
+                break;
+            }
+        }
     }
 
     // MRP: e.g. "MRP. ₹234.00", "MRP 234"
