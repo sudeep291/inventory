@@ -52,6 +52,14 @@
     font-weight: 900 !important;
 }
 
+.size-mix {
+    background: linear-gradient(135deg, #ec4899, #f97316); /* Intense Hot Pink to Vivid Orange */
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900 !important;
+    text-shadow: 0 2px 10px rgba(236, 72, 153, 0.2);
+}
+
 .product-card-mobile-mix {
     background: linear-gradient(135deg, #1e293b, #334155, #1e1b4b) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;

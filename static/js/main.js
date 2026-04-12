@@ -99,7 +99,7 @@ async function loadWelcomeDashboard() {
                 lsHTML += `<tr>
                     <td><strong>${item.article}</strong></td>
                     <td>${item.name}</td>
-                    <td><span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="value-mix" style="font-size:1.2rem;">${item.size}</span></td>                    <td class="text-loss" style="font-weight:900; font-size:1.1rem;">${item.stock} left</td>
+                    <td><span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="size-mix" style="font-size:1.2rem;">${item.size}</span></td>                    <td class="text-loss" style="font-weight:900; font-size:1.1rem;">${item.stock} left</td>
                 </tr>`;
             });
             document.getElementById('lowStockAlerts').innerHTML = lsHTML || '<tr><td colspan="4" class="text-profit">All stock is healthy!</td></tr>';
@@ -130,7 +130,7 @@ async function loadOverviewTable() {
     productsCache.forEach(p => {
         let sizeHTML = '';
         p.sizes.forEach(s => {
-            sizeHTML += `<span style="background:#f1f5f9; padding:0.4rem 0.7rem; border-radius:6px; font-size:1rem; font-weight:600; color:#1e293b; margin-bottom:0.25rem;"><span class="uk-label-mix">UK</span> <span class="value-mix" style="font-size:1.1rem;">${s.size}</span> : <span class="${s.stock<3?'text-loss':'value-mix'}" style="${s.stock>=3?'font-size:1.1rem':''}">${s.stock}</span></span>`;
+            sizeHTML += `<span style="background:#f1f5f9; padding:0.4rem 0.7rem; border-radius:6px; font-size:1rem; font-weight:600; color:#1e293b; margin-bottom:0.25rem;"><span class="uk-label-mix">UK</span> <span class="size-mix" style="font-size:1.1rem;">${s.size}</span> : <span class="${s.stock<3?'text-loss':'value-mix'}" style="${s.stock>=3?'font-size:1.1rem':''}">${s.stock}</span></span>`;
         });
         
         const card = document.createElement('div');
@@ -298,7 +298,7 @@ async function searchSellProduct() {
         const span = document.createElement('div');
         span.className = 'exec-size-item';
         span.textContent = `UK ${s.size} (${s.stock} left)`;
-        span.innerHTML = `<span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="value-mix" style="font-size:1.25rem;">${s.size}</span> <span class="value-mix" style="font-size:1rem; margin-left:0.4rem;">(${s.stock} left)</span>`;
+        span.innerHTML = `<span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="size-mix" style="font-size:1.25rem;">${s.size}</span> <span class="value-mix" style="font-size:1rem; margin-left:0.4rem;">(${s.stock} left)</span>`;
         span.onclick = () => {
             document.querySelectorAll('#sellResSizes .exec-size-item').forEach(el=>el.classList.remove('selected'));
             span.classList.add('selected');
@@ -426,7 +426,7 @@ async function searchUpdateProduct() {
             <div style="display:flex; align-items:center; gap:1rem;">
                 <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
-                    <span class="size-badge-num">R | <span class="uk-label-mix" style="font-size:1rem;">UK</span>: <span class="value-mix" style="font-size:1.15rem;">${s.size}</span></span>
+                    <span class="size-badge-num">R | <span class="uk-label-mix" style="font-size:1rem;">UK</span>: <span class="size-mix" style="font-size:1.15rem;">${s.size}</span></span>
                 </label>
                 <div style="display:flex; flex-direction:column; gap:0.1rem;">
                     <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>
@@ -518,10 +518,10 @@ function previewBatchUpdate() {
                 if(!sizeInput || sizeInput.value.trim() === '') return;
                 const sizeVal = sizeInput.value.trim();
                 batchPayload.push({is_new: true, product_id: currentUpdateProductId, size: sizeVal, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.75rem; padding:0.15rem 0.4rem;">NEW</span>Size <span class="uk-label-mix">UK</span> <span class="value-mix" style="font-size:1.15rem;">${sizeVal}</span></span> <strong class="text-success" style="font-size:1.1rem;">+${val} Pairs</strong></div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.75rem; padding:0.15rem 0.4rem;">NEW</span>Size <span class="uk-label-mix">UK</span> <span class="size-mix" style="font-size:1.15rem;">${sizeVal}</span></span> <strong class="text-success" style="font-size:1.1rem;">+${val} Pairs</strong></div>`;
             } else {
                 batchPayload.push({size_id: i.dataset.sizeid, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size <span class="uk-label-mix">UK</span> <span class="value-mix" style="font-size:1.15rem;">${i.dataset.sizename}</span></span> <strong class="text-success" style="font-size:1.1rem;">+${val} Pairs</strong></div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size <span class="uk-label-mix">UK</span> <span class="size-mix" style="font-size:1.15rem;">${i.dataset.sizename}</span></span> <strong class="text-success" style="font-size:1.1rem;">+${val} Pairs</strong></div>`;
             }
         }
     });
@@ -808,7 +808,7 @@ async function loadSizeHeatmap() {
         const hClass = `heat-${item.heat_level}`;
         html += `
         <div class="heatmap-box ${hClass}">
-            <div class="sz"><span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="value-mix" style="font-size:1.25rem;">${item.size}</span></div>
+            <div class="sz"><span class="uk-label-mix" style="font-size:1.1rem;">UK</span> <span class="size-mix" style="font-size:1.25rem;">${item.size}</span></div>
             <div class="stats">${item.total_sold} Sold <br> ${item.current_stock} Left</div>
         </div>`;
     });
