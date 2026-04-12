@@ -1,5 +1,6 @@
 # Sensitive data
 .env
+firebase_credentials.json
 
 # Binaries and large files
 cloudflared.exe

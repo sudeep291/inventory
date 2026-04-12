@@ -1,7 +1,8 @@
 # Use the official Python image
 FROM python:3.11-slim
 
-# Install minimal system dependencies for PostgreSQL if needed (psycopg2-binary doesn't strictly need them)
+# Firebase Admin SDK only needs network access — no native DB drivers required
+
 RUN apt-get update && apt-get install -y \
     curl \
     && apt-get clean \
