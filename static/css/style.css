@@ -1133,63 +1133,30 @@ body.dark-theme .return-toggle.active {
     max-width: 90% !important;
 }
 
-/* Highlight 'Scan an Image File' link - NOW A VIBRANT MIXED BUTTON */
+/* Highlight 'Scan an Image File' link - NOW A FULL BUTTON */
 #reader a, #readerAdd a, #readerUpdate a, #readerHistory a {
-    background: linear-gradient(135deg, #059669, #10b981) !important;
-    color: white !important;
-    font-weight: 800 !important;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
     text-decoration: none !important;
-    padding: 0.8rem 1.5rem !important;
-    border-radius: 10px !important;
+    padding: 0.7rem 1.2rem !important;
+    border-radius: 8px !important;
     display: block !important;
-    margin: 1rem auto !important;
-    border: none !important;
-    width: 240px !important;
+    margin: 0.6rem auto !important;
+    border: 1px solid #e2e8f0 !important;
+    width: 220px !important;
     text-align: center !important;
-    font-size: 1rem !important;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
-    transition: all 0.3s ease !important;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 0.95rem !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    transition: all 0.2s ease !important;
 }
 
 #reader a:hover, #readerAdd a:hover, #readerUpdate a:hover, #readerHistory a:hover {
-    background: linear-gradient(135deg, #047857, #059669) !important;
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.5) !important;
-}
-
-/* Compatibility Grid Styling */
-.compat-grid-scanner {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: #f8fafc;
-    border-radius: 12px;
-    border: 1px dashed #cbd5e1;
-}
-
-.compat-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    text-align: center;
-}
-
-.compat-item svg {
-    color: #64748b;
-}
-
-.compat-item span {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #475569;
-    text-transform: uppercase;
-    letter-spacing: 0.05rem;
+    background: #ffffff !important;
+    border-color: #3b82f6 !important;
+    color: #2563eb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
 }
 
 #reader button:active, #readerAdd button:active {
