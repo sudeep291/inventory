@@ -1120,38 +1120,43 @@ body.dark-theme .return-toggle.active {
     background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
     color: white !important;
     border: none !important;
-    border-radius: 10px !important;
-    padding: 1rem 2rem !important; /* Huge tap target */
-    font-size: 1.1rem !important;
+    border-radius: 8px !important;
+    padding: 0.7rem 1.2rem !important; /* Compact but tap-friendly */
+    font-size: 0.95rem !important;
     font-weight: 700 !important;
-    margin: 1rem auto !important;
+    margin: 0.6rem auto !important;
     cursor: pointer !important;
-    box-shadow: 0 6px 15px rgba(59, 130, 246, 0.3) !important;
-    transition: transform 0.1s ease !important;
+    box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25) !important;
+    transition: all 0.2s ease !important;
     display: block !important;
-    width: 80% !important;
-    max-width: 300px !important;
+    width: 220px !important; /* Fixed width for alignment */
+    max-width: 90% !important;
 }
 
-/* Highlight 'Scan an Image File' link */
+/* Highlight 'Scan an Image File' link - NOW A FULL BUTTON */
 #reader a, #readerAdd a, #readerUpdate a, #readerHistory a {
-    color: #4f46e5 !important;
-    font-weight: 800 !important;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9) !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
     text-decoration: none !important;
-    background: #eef2ff !important;
-    padding: 0.6rem 1.2rem !important;
+    padding: 0.7rem 1.2rem !important;
     border-radius: 8px !important;
-    display: inline-block !important;
-    margin-top: 1rem !important;
-    border: 1px solid #c7d2fe !important;
+    display: block !important;
+    margin: 0.6rem auto !important;
+    border: 1px solid #e2e8f0 !important;
+    width: 220px !important;
+    text-align: center !important;
+    font-size: 0.95rem !important;
     box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+    transition: all 0.2s ease !important;
 }
 
 #reader a:hover, #readerAdd a:hover, #readerUpdate a:hover, #readerHistory a:hover {
-    background: #4f46e5 !important;
-    color: #ffffff !important;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3) !important;
+    background: #ffffff !important;
+    border-color: #3b82f6 !important;
+    color: #2563eb !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15) !important;
 }
 
 #reader button:active, #readerAdd button:active {
