@@ -123,7 +123,12 @@
         if (!html5QrcodeScannerHistory) {
             html5QrcodeScannerHistory = new Html5QrcodeScanner(
                 "readerHistory",
-                { fps: 10, qrbox: {width: 300, height: 200}, aspectRatio: 1.0 },
+                { 
+                    fps: 10, 
+                    qrbox: {width: 300, height: 200}, 
+                    aspectRatio: 1.0,
+                    videoConstraints: { facingMode: "environment" }
+                },
                 /* verbose= */ false
             );
             

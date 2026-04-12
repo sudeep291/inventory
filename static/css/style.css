@@ -1168,13 +1168,14 @@ body.dark-theme .return-toggle.active {
     display: none !important;
 }
 
-/* Fix dropdown select inside scanner */
-#reader select, #readerAdd select {
-    padding: 0.8rem !important;
-    border-radius: 8px !important;
-    border: 2px solid var(--primary) !important;
-    margin-bottom: 1rem !important;
-    font-size: 1rem !important;
-    width: 90% !important;
-    max-width: 300px !important;
+/* Fix dropdown select inside scanner - HIDE on mobile if needed */
+#reader select, #readerAdd select, #readerUpdate select, #readerHistory select {
+    display: none !important; /* Forces the default (back) camera without user selection overhead */
 }
+
+/* Specific HTML5-QRCode internal IDs for hiding camera selection */
+#reader__camera_selection, #readerAdd__camera_selection, #readerUpdate__camera_selection, #readerHistory__camera_selection {
+    display: none !important;
+}
+
+#reader__dashboard_section_csr span, #readerAdd__dashboard_section_csr span {
