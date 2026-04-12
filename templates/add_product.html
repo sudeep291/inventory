@@ -20,6 +20,14 @@
                     <div class="scanner-inner">
                         <div id="readerAdd" style="width:100%; border:none;"></div>
                         <div style="padding:1rem; text-align:center; background:var(--bg-white);">
+                            <!-- OCR Label Reader -->
+                            <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
+                                <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
+                                <label for="ocrImageInputAdd" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3);">
+                                    📋 Read Label (OCR)
+                                </label>
+                                <input type="file" id="ocrImageInputAdd" accept="image/*" style="display:none;">
+                            </div>
                             <button type="button" class="btn danger" onclick="stopBarcodeScannerAdd()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                         </div>
                     </div>
@@ -292,5 +300,56 @@
     function onScanFailureAdd(error) {
         // handle scan failure silently
     }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => { initOCRWorker(); });
+
+    // OCR Label Reader - Add Product (fills Article No + MRP + Company Name)
+    document.getElementById('ocrImageInputAdd').addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+        this.value = '';
+
+        await runOCRScan(
+            file,
+            (extracted) => {
+                showOCRConfirmCard(extracted, (confirmed) => {
+                    // Apply Article No
+                    const artInput = document.getElementById('addArticleInput');
+                    if (artInput && confirmed.articleNo) artInput.value = confirmed.articleNo;
+
+                    // Apply MRP
+                    const mrpInput = document.querySelector('input[name="mrp"]');
+                    if (mrpInput && confirmed.mrp) mrpInput.value = confirmed.mrp;
+
+                    // Apply Company Name
+                    const nameInput = document.querySelector('input[name="name"]');
+                    if (nameInput && confirmed.companyName) nameInput.value = confirmed.companyName;
+
+                    // Check if article already exists in your own inventory
+                    if (confirmed.articleNo && typeof productsCache !== 'undefined') {
+                        const existing = productsCache.find(p => p.article_no === confirmed.articleNo);
+                        if (existing) {
+                            // Override with trusted local data if it exists
+                            if (mrpInput) mrpInput.value = existing.mrp || confirmed.mrp || '';
+                            if (nameInput) nameInput.value = existing.name || confirmed.companyName || '';
+                            const discInput = document.querySelector('input[name="default_discount"]');
+                            if (discInput) discInput.value = existing.default_discount || 0;
+                            const catSelect = document.getElementById('categorySelect');
+                            if (catSelect) catSelect.value = existing.category_id || '';
+                            showToast('✅ Matched existing product — all fields auto-filled!');
+                        } else {
+                            showToast('✅ New product — Article, MRP & Company applied from label.');
+                        }
+                    } else {
+                        showToast('✅ Label data applied. Please fill remaining fields.');
+                    }
+                });
+            },
+            (errMsg) => { showToast('❌ ' + errMsg); }
+        );
+    });
 </script>
 {% endblock %}

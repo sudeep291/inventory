@@ -108,6 +108,14 @@
                 <div class="scanner-inner">
                     <div id="readerUpdate" style="width:100%; border:none;"></div>
                     <div style="padding:1rem; text-align:center; background:var(--bg-white);">
+                        <!-- OCR Label Reader -->
+                        <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
+                            <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
+                            <label for="ocrImageInputUpdate" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3);">
+                                📋 Read Label (OCR)
+                            </label>
+                            <input type="file" id="ocrImageInputUpdate" accept="image/*" style="display:none;">
+                        </div>
                         <button type="button" class="btn danger" onclick="stopBarcodeScannerUpdate()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                     </div>
                 </div>
@@ -206,5 +214,34 @@
     function onScanFailureUpdate(error) {
         // handle scan failure silently
     }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', () => { initOCRWorker(); });
+
+    // OCR Label Reader - Update Stock
+    document.getElementById('ocrImageInputUpdate').addEventListener('change', async function() {
+        const file = this.files[0];
+        if (!file) return;
+        this.value = '';
+
+        await runOCRScan(
+            file,
+            (extracted) => {
+                showOCRConfirmCard(extracted, (confirmed) => {
+                    if (confirmed.articleNo) {
+                        const searchInput = document.getElementById('updateSearchInput');
+                        searchInput.value = confirmed.articleNo;
+                        showToast('✅ Article No applied: ' + confirmed.articleNo);
+                        setTimeout(() => searchUpdateProduct(), 300);
+                    } else {
+                        showToast('⚠️ Article No not detected. Please enter manually.');
+                    }
+                });
+            },
+            (errMsg) => { showToast('❌ ' + errMsg); }
+        );
+    });
 </script>
 {% endblock %}
