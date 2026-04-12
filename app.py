@@ -105,7 +105,7 @@ def process_image(image_file, max_size=(600, 600)):
         b64_str = base64.b64encode(img_bytes).decode('utf-8')
         return f"data:image/jpeg;base64,{b64_str}"
     except Exception as e:
-        print(f"IMAGE OPTIMIZATION ERROR: {e}")
+        logger.error(f"IMAGE OPTIMIZATION ERROR: {e}")
         return None
 
 def clean_input(text):

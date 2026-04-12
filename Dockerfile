@@ -1,25 +1,18 @@
-# Use the official Python image
+# Use Lean Python 3.11 image
 FROM python:3.11-slim
 
-# Firebase Admin SDK only needs network access — no native DB drivers required
-
-RUN apt-get update && apt-get install -y \
-    curl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set the working directory
+# Set working directory
 WORKDIR /app
 
-# Copy requirements and install
+# Step 1: Install Python dependencies (Faster Caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the application
+# Step 2: Copy App (Project Slender: 65MB+ removed)
 COPY . .
 
-# Expose the port Flask runs on
+# Step 3: Deployment Config
 EXPOSE 5000
 
-# Start the application using Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app"]
+# Step 4: Start System
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "app:app", "--timeout", "120"]
