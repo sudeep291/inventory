@@ -45,6 +45,13 @@
     text-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
 }
 
+.value-mix {
+    background: linear-gradient(135deg, #1e40af, #0891b2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900 !important;
+}
+
 .product-card-mobile-mix {
     background: linear-gradient(135deg, #1e293b, #334155, #1e1b4b) !important;
     border: 1px solid rgba(255, 255, 255, 0.1) !important;
@@ -55,6 +62,33 @@
 .product-card-mobile-mix .prod-info .prod-meta,
 .product-card-mobile-mix .prod-info .prod-meta strong {
     color: #f8fafc !important;
+}
+
+.btn-scan-mix {
+    background: linear-gradient(135deg, #4f46e5, #9333ea, #db2777) !important;
+    border: none !important;
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    padding: 0.8rem 1.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    border-radius: 10px !important;
+    box-shadow: 0 10px 20px rgba(147, 51, 234, 0.3) !important;
+    transition: all 0.3s ease !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+}
+
+.btn-scan-mix:hover {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 15px 30px rgba(147, 51, 234, 0.5) !important;
+    filter: brightness(1.1);
+}
+
+.btn-scan-mix svg {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
 }
 
 
