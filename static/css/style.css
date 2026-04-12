@@ -28,6 +28,36 @@
     --shadow-hover: 0 20px 25px -5px rgba(0,0,0,0.08), 0 10px 10px -5px rgba(0,0,0,0.04);
 }
 
+/* ==================================
+   PREMIUM COLOR MIX UTILITIES
+================================== */
+.uk-label-mix {
+    background: linear-gradient(135deg, #f43f5e, #8b5cf6, #3b82f6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 900 !important;
+    letter-spacing: 0.5px;
+}
+
+.total-stock-luminous {
+    color: #eab308 !important; /* Luminous Gold */
+    font-weight: 800 !important;
+    text-shadow: 0 0 8px rgba(234, 179, 8, 0.3);
+}
+
+.product-card-mobile-mix {
+    background: linear-gradient(135deg, #1e293b, #334155, #1e1b4b) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: #f8fafc !important;
+}
+
+.product-card-mobile-mix .prod-info h3, 
+.product-card-mobile-mix .prod-info .prod-meta,
+.product-card-mobile-mix .prod-info .prod-meta strong {
+    color: #f8fafc !important;
+}
+
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
@@ -747,7 +777,25 @@ body.dark-theme .bottom-nav {
     .summary-card { padding: 1.5rem; }
     .premium-result-card { flex-direction: column; padding: 1.5rem; gap: 1.5rem; }
     .img-hover-container { width: 100% !important; height: 250px !important; }
+
+    /* Unique Mobile Mixed Color Logic */
+    .product-card {
+        background: linear-gradient(135deg, #111827, #1f2937, #1e1b4b) !important;
+        border: 1px solid rgba(59, 130, 246, 0.2) !important;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.4) !important;
+    }
+    .product-card .prod-info h3, 
+    .product-card .prod-info .prod-meta, 
+    .product-card .prod-info .prod-meta strong {
+        color: #f8fafc !important;
+    }
+    .product-card .badge {
+        background: rgba(59, 130, 246, 0.2) !important;
+        color: #60a5fa !important;
+        border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    }
 }
+
 
 /* Responsive Layout Utilities */
 .responsive-flex-stack {

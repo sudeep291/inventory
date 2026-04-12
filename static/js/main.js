@@ -99,7 +99,7 @@ async function loadWelcomeDashboard() {
                 lsHTML += `<tr>
                     <td><strong>${item.article}</strong></td>
                     <td>${item.name}</td>
-                    <td>UK ${item.size}</td>
+                    <td><span class="uk-label-mix">UK</span> ${item.size}</td>
                     <td class="text-loss" style="font-weight:bold">${item.stock} left</td>
                 </tr>`;
             });
@@ -131,7 +131,7 @@ async function loadOverviewTable() {
     productsCache.forEach(p => {
         let sizeHTML = '';
         p.sizes.forEach(s => {
-            sizeHTML += `<span style="background:#f1f5f9; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.25rem;">UK ${s.size}: <span class="${s.stock<3?'text-loss':'text-primary'}">${s.stock}</span></span>`;
+            sizeHTML += `<span style="background:#f1f5f9; padding:0.25rem 0.5rem; border-radius:4px; font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.25rem;"><span class="uk-label-mix">UK</span> ${s.size}: <span class="${s.stock<3?'text-loss':'text-primary'}">${s.stock}</span></span>`;
         });
         
         const card = document.createElement('div');
@@ -178,7 +178,7 @@ async function loadOverviewTable() {
                 <div class="prod-meta"><strong>Base Strategy:</strong> <span class="val val-strategy">${p.default_discount}% Off</span></div>
                 <div class="prod-meta" style="margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px dashed var(--border);"><strong>Target Sold:</strong> <span class="val val-sold">₹${toMoney(p.selling_price)}</span></div>
                 
-                <div class="prod-meta"><strong>Total Stock:</strong> <span class="val text-primary" style="font-weight:700">${p.total_stock}</span></div>
+                <div class="prod-meta"><strong>Total Stock:</strong> <span class="val total-stock-luminous">${p.total_stock}</span></div>
                 
                 <div style="display:flex; flex-wrap:wrap; gap:0.25rem; border-top:1px solid var(--border); padding-top:1rem; margin-bottom:1rem;">
                     ${sizeHTML || '<span style="color:var(--text-secondary); font-size:0.85rem">No active sizes</span>'}
@@ -299,6 +299,7 @@ async function searchSellProduct() {
         const span = document.createElement('div');
         span.className = 'exec-size-item';
         span.textContent = `UK ${s.size} (${s.stock} left)`;
+        span.innerHTML = `<span class="uk-label-mix">UK</span> ${s.size} (${s.stock} left)`;
         span.onclick = () => {
             document.querySelectorAll('#sellResSizes .exec-size-item').forEach(el=>el.classList.remove('selected'));
             span.classList.add('selected');
@@ -426,7 +427,7 @@ async function searchUpdateProduct() {
             <div style="display:flex; align-items:center; gap:1rem;">
                 <label class="size-return-badge" data-sizeid="${s.id}" title="Click to mark as Return">
                     <input type="checkbox" class="is-return-check" onchange="this.parentElement.classList.toggle('active'); handleRowReturnUI(this.closest('.update-row').querySelector('.batch-update-val')); validateBatchBtn()">
-                    <span class="size-badge-num">R | UK: ${s.size}</span>
+                    <span class="size-badge-num">R | <span class="uk-label-mix">UK</span>: ${s.size}</span>
                 </label>
                 <div style="display:flex; flex-direction:column; gap:0.1rem;">
                     <span style="color:#1e293b; font-size:0.95rem; font-weight:700;">Stock: ${s.stock}</span>
@@ -474,7 +475,7 @@ function addNewUpdateSizeRow() {
     
     row.innerHTML = `
         <div style="display:flex; align-items:center; gap:0.5rem;">
-            <strong style="color:#1d4ed8; font-size:1.1rem">UK</strong> 
+            <strong class="uk-label-mix" style="font-size:1.1rem">UK</strong> 
             <input type="number" class="new-size-val" placeholder="Size" step="0.5" style="width:65px; padding:0.5rem; border:1px solid #3b82f6; border-radius:6px; font-weight:700">
             <span style="color:#1d4ed8; font-weight:700; margin-left:1rem;">Add Stock:</span>
         </div>
@@ -518,10 +519,10 @@ function previewBatchUpdate() {
                 if(!sizeInput || sizeInput.value.trim() === '') return;
                 const sizeVal = sizeInput.value.trim();
                 batchPayload.push({is_new: true, product_id: currentUpdateProductId, size: sizeVal, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;">NEW</span>Size UK ${sizeVal}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}<span class="badge" style="background:#dbeafe; color:#2563eb; margin-right:0.5rem; font-size:0.7rem; padding:0.15rem 0.4rem;">NEW</span>Size <span class="uk-label-mix">UK</span> ${sizeVal}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             } else {
                 batchPayload.push({size_id: i.dataset.sizeid, amount: val, is_return: isReturn, price: refundPx});
-                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size UK ${i.dataset.sizename}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
+                summaryHTML += `<div style="display:flex; justify-content:space-between; margin-bottom:0.25rem;"><span>${isReturn ? '<span class="status-badge-returned" style="margin-right:0.5rem">RETURN</span>' : ''}Size <span class="uk-label-mix">UK</span> ${i.dataset.sizename}</span> <strong class="text-success">+${val} Pairs</strong></div>`;
             }
         }
     });
@@ -808,7 +809,7 @@ async function loadSizeHeatmap() {
         const hClass = `heat-${item.heat_level}`;
         html += `
         <div class="heatmap-box ${hClass}">
-            <div class="sz">UK ${item.size}</div>
+            <div class="sz"><span class="uk-label-mix">UK</span> ${item.size}</div>
             <div class="stats">${item.total_sold} Sold <br> ${item.current_stock} Left</div>
         </div>`;
     });
