@@ -303,7 +303,7 @@
         // handle scan failure silently
     }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
 <script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
 <script>
     setTimeout(() => initOCRWorker(true), 2500); // Wait for page to settle, then load AI into memory

@@ -42,6 +42,9 @@ async function initOCRWorker(silent = false) {
         } catch (e) {
             clearTimeout(dlTimeout);
             console.error('[OCR] Worker init failed:', e);
+            if (!silent && typeof showToast === 'function') {
+                showToast('❌ Engine Error: ' + (e.message || String(e)).substring(0, 50));
+            }
             ocrWorker = null;
             ocrReady = false;
             initPromise = null;
