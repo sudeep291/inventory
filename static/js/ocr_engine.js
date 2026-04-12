@@ -5,43 +5,46 @@
 
 let ocrWorker = null;
 let ocrReady = false;
-let ocrInitializing = false;
+let initPromise = null;
 
 /**
  * Initialize Tesseract worker (lazy — only when user first taps Read Label)
  */
 async function initOCRWorker() {
     if (ocrWorker && ocrReady) return true;
-    if (ocrInitializing) return false;
-
-    ocrInitializing = true;
-    if (typeof showToast === 'function') showToast('⏳ Loading OCR engine (first time only)...');
-
-    try {
-        ocrWorker = await Tesseract.createWorker('eng', 1, {
-            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
-            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
-            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
-            logger: (m) => {
-                if (m.status === 'recognizing text') {
-                    // silent during recognition
-                }
-                if (m.status === 'loading tesseract core' || m.status === 'loading language traineddata') {
-                    if (typeof showToast === 'function') showToast('⚙️ Loading AI model...');
-                }
-            }
-        });
-        ocrReady = true;
-        ocrInitializing = false;
-        if (typeof showToast === 'function') showToast('✅ OCR engine ready!');
-        return true;
-    } catch (e) {
-        console.error('[OCR] Worker init failed:', e);
-        ocrWorker = null;
-        ocrReady = false;
-        ocrInitializing = false;
-        return false;
+    
+    // If already downloading, wait for that download to finish instead of failing
+    if (initPromise) {
+        if (typeof showToast === 'function') showToast('⏳ Still downloading AI model, please wait...');
+        return await initPromise;
     }
+
+    if (typeof showToast === 'function') showToast('⏳ Loading OCR engine (first time only, ~10MB)...');
+
+    initPromise = (async () => {
+        try {
+            // Using default paths for maximum reliability (no CORS issues)
+            ocrWorker = await Tesseract.createWorker('eng', 1, {
+                logger: (m) => {
+                    if (m.status === 'recognizing text') return;
+                    if (m.status.includes('loading')) {
+                        if (typeof showToast === 'function') showToast('⚙️ Starting AI model...');
+                    }
+                }
+            });
+            ocrReady = true;
+            if (typeof showToast === 'function') showToast('✅ OCR engine ready!');
+            return true;
+        } catch (e) {
+            console.error('[OCR] Worker init failed:', e);
+            ocrWorker = null;
+            ocrReady = false;
+            initPromise = null;
+            return false;
+        }
+    })();
+
+    return await initPromise;
 }
 
 /**
