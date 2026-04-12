@@ -17,8 +17,9 @@ import io
 import bleach
 import logging
 
-from google.cloud.firestore_v1.base_query import FieldFilter
+import firebase_admin
 from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 # 🚀 Enterprise Service Logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -567,7 +568,7 @@ def api_add_product():
 
         transaction = db.transaction()
 
-        @firestore.transactional
+        @firebase_admin.firestore.transactional
         def create_product_transaction(transaction, name, article_no, category_id, sizes_json, mrp, default_discount, gender, barcode, image_path):
             # 1. Duplicate article_no check (CRITICAL for consistency)
             existing_query = db.collection('Products').where(filter=FieldFilter('article_no', '==', article_no))
@@ -689,7 +690,7 @@ def api_stock_adjust():
     db = get_db()
     transaction = db.transaction()
 
-    @firestore.transactional
+    @firebase_admin.firestore.transactional
     def update_in_transaction(transaction, size_id, amount, operation, sold_price, discount_applied):
         # 1. Find product containing this size_id
         products_ref = db.collection('Products').where(filter=FieldFilter('is_active', '==', True))
@@ -767,7 +768,7 @@ def api_adjust_stock_batch():
     db = get_db()
     transaction = db.transaction()
 
-    @firestore.transactional
+    @firebase_admin.firestore.transactional
     def run_batch_transaction(transaction, updates, data):
         import uuid
         new_mrp = data.get('new_mrp')
