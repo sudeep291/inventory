@@ -1,4 +1,4 @@
-﻿{% extends 'layout.html' %}
+{% extends 'layout.html' %}
 {% block head %}
 <link rel="preload" as="image" href="/static/images/bg_sell_product.webp" fetchpriority="high">
 {% endblock %}
@@ -174,8 +174,14 @@
 
     const cleanBarcode = (text) => {
         let cleaned = text.replace(/[^\d]/g, "");
+        // 🚀 Smart-Lock: If scan contains your brand prefix 89051661, we isolate it instantly
+        if (cleaned.includes("89051661")) {
+            const startIdx = cleaned.indexOf("89051661");
+            return cleaned.substring(startIdx, startIdx + 13);
+        }
+        // General snapping for other Indian barcodes (starts with 890)
         if (cleaned.startsWith("890") && cleaned.length > 13) {
-            cleaned = cleaned.substring(0, 13);
+            return cleaned.substring(0, 13);
         }
         return cleaned;
     };
