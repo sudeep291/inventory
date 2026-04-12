@@ -239,20 +239,38 @@
         await runOCRScan(
             file,
             (extracted) => {
-                showOCRConfirmCard(extracted, (confirmed) => {
+                // Check if we immediately recognized this article from the DB
+                const matchFound = (extracted.articleNo && typeof productsCache !== 'undefined') 
+                    ? productsCache.find(p => p.article_no.toUpperCase() === extracted.articleNo) 
+                    : null;
+
+                if (matchFound) {
+                    // ⚡ INSTANT MATCH: Skip popup and auto-fetch immediately!
                     preview.style.display = 'none';
                     if (readerEl) readerEl.style.display = 'block';
                     URL.revokeObjectURL(imgURL);
 
-                    if (confirmed.articleNo) {
-                        const searchInput = document.getElementById('updateSearchInput');
-                        searchInput.value = confirmed.articleNo;
-                        showToast('✅ Article No applied: ' + confirmed.articleNo);
-                        setTimeout(() => searchUpdateProduct(), 300);
-                    } else {
-                        showToast('⚠️ Article No not detected. Please enter manually.');
-                    }
-                });
+                    const searchInput = document.getElementById('updateSearchInput');
+                    searchInput.value = extracted.articleNo;
+                    showToast('⚡ Auto-Fetched: ' + extracted.articleNo);
+                    searchUpdateProduct();
+                } else {
+                    // Not in DB, show verification card
+                    showOCRConfirmCard(extracted, (confirmed) => {
+                        preview.style.display = 'none';
+                        if (readerEl) readerEl.style.display = 'block';
+                        URL.revokeObjectURL(imgURL);
+
+                        if (confirmed.articleNo) {
+                            const searchInput = document.getElementById('updateSearchInput');
+                            searchInput.value = confirmed.articleNo;
+                            showToast('✅ Article No applied: ' + confirmed.articleNo);
+                            setTimeout(() => searchUpdateProduct(), 300);
+                        } else {
+                            showToast('⚠️ Article No not detected. Please enter manually.');
+                        }
+                    });
+                }
             },
             (errMsg) => {
                 preview.style.display = 'none';
