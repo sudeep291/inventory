@@ -44,10 +44,25 @@ function playSuccessSequence(containerId, message, callback) {
 
 // Enterprise Global Fetch Wrapper (Zero-Silence Infrastructure)
 async function fetchAPI(url, options = {}) {
-    
+    // 🛡️ SECURITY: Auto-inject CSRF token for state-changing requests
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    if (csrfToken && options.method && options.method !== 'GET') {
+        if (!options.headers) options.headers = {};
+        // If body is FormData, don't set Content-Type (browser handles it)
+        if (!(options.body instanceof FormData)) {
+            if (!options.headers['Content-Type']) options.headers['Content-Type'] = 'application/json';
+        }
+        options.headers['X-CSRF-Token'] = csrfToken;
+    }
+
     try {
         const response = await fetch(url, options);
-        const data = await response.json();
+        // Handle no-content responses (204 or empty)
+        const contentType = response.headers.get("content-type");
+        let data = {};
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+            data = await response.json();
+        }
         
         if (!response.ok || data.error) {
             const errorMsg = data.error || `Server Error: ${response.status}`;
@@ -556,21 +571,17 @@ async function executeBatchUpdate() {
    ADD_PRODUCT.HTML
 ================================== */
 async function loadCategoryDropdown() {
-    try {
-        const res = await fetch('/api/inventory');
-        const data = await res.json();
-        if(data.error) return;
+    const data = await fetchAPI('/api/inventory');
+    if(data && data.categories) {
         const select = document.getElementById('categorySelect');
         if(!select) return;
-        
         select.innerHTML = '<option value="">Select Category</option>';
-        
         data.categories.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.id; opt.textContent = c.name;
             select.appendChild(opt);
         });
-    } catch(err){}
+    }
 }
 
 async function handleCategorySubmit(e) {

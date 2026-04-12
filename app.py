@@ -29,10 +29,30 @@ load_dotenv()
 GLOBAL_ANALYTICS_CACHE = {}
 BACKUP_FILE = 'static/resilience_backup.json'
 
-# 🔐 BRUTE-FORCE LOCKOUT ENGINE
+# 🔐 BRUTE-FORCE & SECURITY ENGINE
 _LOGIN_LOCKOUT = {}
 MAX_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+
+import secrets
+def generate_csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(32)
+    return session['_csrf_token']
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
+from functools import wraps
+def csrf_protected(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+            token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not token or token != session.get('_csrf_token'):
+                logger.warning(f"🛡️ SECURITY: CSRF Token Mismatch/Missing for {request.path}")
+                return jsonify({"error": "Forbidden: CSRF token missing or invalid"}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 def save_cache_to_disk():
     try:
@@ -76,15 +96,29 @@ class CustomJSONProvider(DefaultJSONProvider):
         return super().default(obj)
 
 def process_image(image_file, max_size=(600, 600)):
-    """Professional Image Optimizer."""
+    """Professional Image Optimizer with Size Guard."""
     try:
+        # Check raw file size (Max 5MB before processing)
+        image_file.seek(0, os.SEEK_END)
+        if image_file.tell() > 5 * 1024 * 1024:
+            logger.warning("🛡️ SECURITY: Refused upload > 5MB")
+            return None
+        image_file.seek(0)
+
         img = Image.open(image_file)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         img.thumbnail(max_size, Image.Resampling.LANCZOS)
         buffer = io.BytesIO()
         img.save(buffer, format="JPEG", quality=85, optimize=True)
-        b64_str = base64.b64encode(buffer.getvalue()).decode('utf-8')
+        
+        # Final document size check (Firestore doc limit is 1MB, we aim for < 300KB)
+        img_bytes = buffer.getvalue()
+        if len(img_bytes) > 700 * 1024: 
+             logger.warning("🛡️ SECURITY: Optimized image too large for DB")
+             return None
+
+        b64_str = base64.b64encode(img_bytes).decode('utf-8')
         return f"data:image/jpeg;base64,{b64_str}"
     except Exception as e:
         print(f"IMAGE OPTIMIZATION ERROR: {e}")
@@ -475,6 +509,7 @@ def api_inventory():
 
 
 @app.route('/api/categories', methods=['POST'])
+@csrf_protected
 def api_add_category():
     name = clean_input(request.json.get('name', '').strip())
     if not name: return jsonify({"error": "Name required"}), 400
@@ -499,6 +534,7 @@ def api_add_category():
 
 
 @app.route('/api/products', methods=['POST'])
+@csrf_protected
 def api_add_product():
     name = clean_input(request.form.get('name'))
     article_no = clean_input(request.form.get('article_no'))
@@ -568,6 +604,7 @@ def api_add_product():
 
 
 @app.route('/api/products/<string:id>/image', methods=['POST'])
+@csrf_protected
 def api_update_product_image(id):
     image = request.files.get('image')
     if not image or not image.filename:
@@ -589,6 +626,7 @@ def api_update_product_image(id):
 
 
 @app.route('/api/products/<string:id>/image/remove', methods=['POST'])
+@csrf_protected
 def api_remove_product_image(id):
     try:
         db = get_db()
@@ -601,6 +639,7 @@ def api_remove_product_image(id):
 
 
 @app.route('/api/products/remove', methods=['POST'])
+@csrf_protected
 def api_remove_product():
     product_id = request.json.get('product_id')
     if not product_id: return jsonify({"error": "Missing product_id"}), 400
@@ -615,72 +654,79 @@ def api_remove_product():
 
 
 @app.route('/api/stock/adjust', methods=['POST'])
+@csrf_protected
 def api_stock_adjust():
     data = request.json
     size_id = data.get('size_id')
-    amount = data.get('amount')
+    amount = safe_int(data.get('amount'))
     operation = data.get('operation')
-    sold_price = data.get('sold_price')
-    discount_applied = data.get('discount_applied')
+    sold_price = safe_float(data.get('sold_price'))
+    discount_applied = safe_float(data.get('discount_applied'))
 
     if not all([size_id, amount, operation]):
         return jsonify({"error": "Missing params"}), 400
 
-    amount = safe_int(amount)
     db = get_db()
+    transaction = db.transaction()
 
-    try:
-        # Find the product containing this size_id
-        products_docs = db.collection('Products').where(filter=FieldFilter('is_active', '==', True)).stream()
-        target_product = None
+    @firestore.transactional
+    def update_in_transaction(transaction, size_id, amount, operation, sold_price, discount_applied):
+        # 1. Find product containing this size_id
+        products_ref = db.collection('Products').where(filter=FieldFilter('is_active', '==', True))
+        docs = products_ref.stream(transaction=transaction)
+        
+        target_doc = None
         target_size = None
-
-        for pdoc in products_docs:
-            d = pdoc.to_dict()
+        for doc in docs:
+            d = doc.to_dict()
             for sz in d.get('sizes', []):
                 if sz.get('id') == size_id:
-                    target_product = pdoc
+                    target_doc = doc
                     target_size = sz
                     break
-            if target_product:
-                break
+            if target_doc: break
 
-        if not target_product or not target_size:
-            return jsonify({"error": "Size not found"}), 404
+        if not target_doc: return {"error": "Product size not found"}, 404
 
+        # 2. Update stock
         current_stock = safe_int(target_size.get('stock', 0))
-
         if operation == 'subtract' and current_stock < amount:
-            return jsonify({"error": "Not enough stock!"}), 400
+            return {"error": "Insufficient stock"}, 400
 
-        # Update sizes array
-        prod_data = target_product.to_dict()
-        sizes = prod_data.get('sizes', [])
-        for sz in sizes:
+        new_sizes = target_doc.to_dict().get('sizes', [])
+        for sz in new_sizes:
             if sz.get('id') == size_id:
-                if operation == 'subtract':
-                    sz['stock'] = current_stock - amount
-                else:
-                    sz['stock'] = current_stock + amount
+                sz['stock'] = (current_stock - amount) if operation == 'subtract' else (current_stock + amount)
                 break
+        
+        transaction.update(target_doc.reference, {'sizes': new_sizes})
 
-        target_product.reference.update({'sizes': sizes})
-
-        # Record sale
+        # 3. Log sale
         if operation == 'subtract':
-            db.collection('Sales').add({
-                'product_id': target_product.id,
-                'product_name': prod_data.get('name', ''),
-                'article_no': prod_data.get('article_no', ''),
+            sale_ref = db.collection('Sales').document()
+            transaction.set(sale_ref, {
+                'product_id': target_doc.id,
+                'product_name': target_doc.to_dict().get('name', ''),
+                'article_no': target_doc.to_dict().get('article_no', ''),
                 'size': safe_float(target_size.get('size')),
                 'quantity': amount,
-                'sold_price': safe_float(sold_price),
-                'discount_applied': safe_float(discount_applied),
-                'selling_price': safe_float(prod_data.get('selling_price')),
-                'mrp': safe_float(prod_data.get('mrp')),
+                'sold_price': sold_price,
+                'discount_applied': discount_applied,
+                'selling_price': safe_float(target_doc.to_dict().get('selling_price')),
+                'mrp': safe_float(target_doc.to_dict().get('mrp')),
                 'sale_date': datetime.datetime.now(datetime.timezone.utc),
                 'status': 'SALE'
             })
+        return {"success": True}, 200
+
+    try:
+        res, code = update_in_transaction(transaction, size_id, amount, operation, sold_price, discount_applied)
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
+        return jsonify(res), code
+    except Exception as e:
+        logger.error(f"Transactional Stock Adjust Error: {e}")
+        return jsonify({"error": str(e)}), 500
             
         import threading
         threading.Thread(target=enterprise_heartbeat, daemon=True).start()
@@ -692,16 +738,18 @@ def api_stock_adjust():
 
 
 @app.route('/api/stock/adjust_batch', methods=['POST'])
+@csrf_protected
 def api_adjust_stock_batch():
     data = request.json
     updates = data.get('updates', [])
-    if not updates:
-        return jsonify({"error": "No updates provided"}), 400
+    if not updates: return jsonify({"error": "No updates provided"}), 400
 
     db = get_db()
-    import uuid
+    transaction = db.transaction()
 
-    try:
+    @firestore.transactional
+    def run_batch_transaction(transaction, updates, data):
+        import uuid
         new_mrp = data.get('new_mrp')
 
         for up in updates:
@@ -710,15 +758,14 @@ def api_adjust_stock_batch():
             is_return = up.get('is_return', False)
 
             if up.get('is_new'):
-                # New size being added to existing product
                 product_id = up.get('product_id')
                 size = safe_float(up.get('size'))
-                prod_doc = db.collection('Products').document(product_id).get()
-                if not prod_doc.exists: continue
-                prod_data = prod_doc.to_dict()
-                sizes = prod_data.get('sizes', [])
-
-                # Check if size already exists
+                p_ref = db.collection('Products').document(product_id)
+                p_snap = p_ref.get(transaction=transaction)
+                if not p_snap.exists: continue
+                
+                p_data = p_snap.to_dict()
+                sizes = p_data.get('sizes', [])
                 found = False
                 for sz in sizes:
                     if sz.get('size') == size:
@@ -727,64 +774,67 @@ def api_adjust_stock_batch():
                         break
                 if not found:
                     sizes.append({"id": str(uuid.uuid4()), "size": size, "stock": amount})
-
-                prod_doc.reference.update({'sizes': sizes})
-
+                
+                transaction.update(p_ref, {'sizes': sizes})
+                
                 if is_return:
-                    refund_px = safe_float(up.get('price'), 0.0)
-                    db.collection('Sales').add({
-                        'product_id': product_id,
-                        'product_name': prod_data.get('name', ''),
-                        'article_no': prod_data.get('article_no', ''),
-                        'size': size,
-                        'quantity': amount,
-                        'sold_price': refund_px,
-                        'selling_price': safe_float(prod_data.get('selling_price')),
-                        'mrp': safe_float(prod_data.get('mrp')),
-                        'sale_date': datetime.datetime.now(datetime.timezone.utc),
-                        'status': 'RETURNED'
+                    sale_ref = db.collection('Sales').document()
+                    transaction.set(sale_ref, {
+                        'product_id': product_id, 'product_name': p_data.get('name', ''),
+                        'article_no': p_data.get('article_no', ''), 'size': size,
+                        'quantity': amount, 'sold_price': safe_float(up.get('price'), 0.0),
+                        'selling_price': safe_float(p_data.get('selling_price')),
+                        'mrp': safe_float(p_data.get('mrp')),
+                        'sale_date': datetime.datetime.now(datetime.timezone.utc), 'status': 'RETURNED'
                     })
             else:
                 size_id = up.get('size_id')
-                # Find product with this size_id
-                products_docs = db.collection('Products').stream()
-                for pdoc in products_docs:
-                    prod_data = pdoc.to_dict()
-                    sizes = prod_data.get('sizes', [])
+                # Find product with this size_id within transaction context
+                # Note: Transactional queries must use the transaction object
+                products_ref = db.collection('Products').where(filter=FieldFilter('is_active', '==', True))
+                p_docs = products_ref.stream(transaction=transaction)
+                for p_snap in p_docs:
+                    pd = p_snap.to_dict()
+                    sizes = pd.get('sizes', [])
                     for sz in sizes:
                         if sz.get('id') == size_id:
                             sz['stock'] += amount
-                            pdoc.reference.update({'sizes': sizes})
+                            transaction.update(p_snap.reference, {'sizes': sizes})
                             if is_return:
-                                refund_px = safe_float(up.get('price'), 0.0)
-                                db.collection('Sales').add({
-                                    'product_id': pdoc.id,
-                                    'product_name': prod_data.get('name', ''),
-                                    'article_no': prod_data.get('article_no', ''),
-                                    'size': safe_float(sz.get('size')),
-                                    'quantity': amount,
-                                    'sold_price': refund_px,
-                                    'selling_price': safe_float(prod_data.get('selling_price')),
-                                    'mrp': safe_float(prod_data.get('mrp')),
-                                    'sale_date': datetime.datetime.now(datetime.timezone.utc),
-                                    'status': 'RETURNED'
+                                sale_ref = db.collection('Sales').document()
+                                transaction.set(sale_ref, {
+                                    'product_id': p_snap.id, 'product_name': pd.get('name', ''),
+                                    'article_no': pd.get('article_no', ''), 'size': safe_float(sz.get('size')),
+                                    'quantity': amount, 'sold_price': safe_float(up.get('price'), 0.0),
+                                    'selling_price': safe_float(pd.get('selling_price')),
+                                    'mrp': safe_float(pd.get('mrp')),
+                                    'sale_date': datetime.datetime.now(datetime.timezone.utc), 'status': 'RETURNED'
                                 })
                             break
 
-        # Dynamic Price Synchronization
         if new_mrp:
             nm = safe_float(new_mrp)
             if nm > 0:
-                # Find the product from updates
                 for up in updates:
-                    pid = up.get('product_id') or None
+                    pid = up.get('product_id')
                     if pid:
-                        prod_doc = db.collection('Products').document(pid).get()
-                        if prod_doc.exists:
-                            disc = safe_float(prod_doc.to_dict().get('default_discount', 0))
+                        p_ref = db.collection('Products').document(pid)
+                        p_snap = p_ref.get(transaction=transaction)
+                        if p_snap.exists:
+                            disc = safe_float(p_snap.to_dict().get('default_discount', 0))
                             new_sp = round(nm - (nm * disc / 100.0), 2)
-                            prod_doc.reference.update({'mrp': nm, 'selling_price': new_sp})
+                            transaction.update(p_snap.reference, {'mrp': nm, 'selling_price': new_sp})
                         break
+        return {"success": True}
+
+    try:
+        res = run_batch_transaction(transaction, updates, data)
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Batch Transaction Error: {e}")
+        return jsonify({"error": str(e)}), 500
 
         import threading
         threading.Thread(target=enterprise_heartbeat, daemon=True).start()
@@ -973,7 +1023,7 @@ def get_consolidated_analytics():
                 total_returned += safe_int(sd.get('quantity', 0))
 
         article_profit = [
-            {"article_no": art, "qty": v["qty"], "revenue": round(v["revenue"], 2), "profit": max(0, round(v["profit"], 2))}
+            {"article_no": art, "qty": v["qty"], "revenue": round(v["revenue"], 2), "profit": round(v["profit"], 2)}
             for art, v in article_map.items()
         ]
 
