@@ -263,7 +263,10 @@ async function searchSellProduct() {
     const q = document.getElementById('sellSearchInput').value.trim().toLowerCase();
     if(!q) return;
 
-    const prod = productsCache.find(p => p.article_no.toLowerCase() === q);
+    const prod = productsCache.find(p => 
+        p.article_no.toLowerCase() === q || 
+        (p.barcode && p.barcode.toLowerCase() === q)
+    );
     const container = document.getElementById('sellResultContainer');
     
     if(!prod) {
@@ -381,7 +384,10 @@ async function searchUpdateProduct() {
     const q = document.getElementById('updateSearchInput').value.trim().toLowerCase();
     if(!q) return;
 
-    const prod = productsCache.find(p => p.article_no.toLowerCase() === q);
+    const prod = productsCache.find(p => 
+        p.article_no.toLowerCase() === q || 
+        (p.barcode && p.barcode.toLowerCase() === q)
+    );
     const container = document.getElementById('updateResultContainer');
     
     if(!prod) {
