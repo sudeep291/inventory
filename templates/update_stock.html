@@ -104,21 +104,11 @@
             </div>
             
             <!-- Barcode Scanner Viewport -->
-            <div id="readerWrapperUpdate" class="scanner-wrapper-premium" style="display:none; margin-top:1.5rem;">
+            <div id="readerWrapper" class="scanner-wrapper-premium" style="display:none;">
                 <div class="scanner-inner">
-                    <div id="readerUpdate" style="width:100%; border:none;"></div>
-                    <!-- OCR Preview: shows uploaded label in scanner area -->
-                    <img id="ocrPreviewUpdate" src="" alt="Label Preview" style="display:none; width:100%; max-height:300px; object-fit:contain; padding:0.5rem; background:#f8fafc;">
+                    <div id="reader" style="width:100%; border:none;"></div>
                     <div style="padding:1rem; text-align:center; background:var(--bg-white);">
-                        <!-- OCR Label Reader -->
-                        <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
-                            <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
-                            <label for="ocrImageInputUpdate" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3);">
-                                📋 Read Label (OCR)
-                            </label>
-                            <input type="file" id="ocrImageInputUpdate" accept=".jpg,.jpeg,.png,.webp" style="display:none;">
-                        </div>
-                        <button type="button" class="btn danger" onclick="stopBarcodeScannerUpdate()" style="padding:0.4rem 1rem;">Cancel Scan</button>
+                        <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                     </div>
                 </div>
             </div>
@@ -173,112 +163,64 @@
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
-    // Native Barcode Scanner Integration for Updates
-    let html5QrcodeScannerUpdate = null;
+    let html5QrcodeScanner = null;
 
     document.getElementById('btnScanBarcodeUpdate').addEventListener('click', () => {
-        document.getElementById('readerWrapperUpdate').style.display = 'block';
+        document.getElementById('readerWrapper').style.display = 'block';
         
-        if (!html5QrcodeScannerUpdate) {
-            html5QrcodeScannerUpdate = new Html5QrcodeScanner(
-                "readerUpdate",
+        if (!html5QrcodeScanner) {
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
                 { 
                     fps: 10, 
                     qrbox: {width: 300, height: 200}, 
                     aspectRatio: 1.0,
                     videoConstraints: { facingMode: "environment" }
                 },
-                /* verbose= */ false
+                false
             );
             
-            html5QrcodeScannerUpdate.render(onScanSuccessUpdate, onScanFailureUpdate);
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
         }
     });
 
-    function stopBarcodeScannerUpdate() {
-        document.getElementById('readerWrapperUpdate').style.display = 'none';
-        if (html5QrcodeScannerUpdate) {
+    function stopBarcodeScanner() {
+        document.getElementById('readerWrapper').style.display = 'none';
+        if (html5QrcodeScanner) {
             try {
-                html5QrcodeScannerUpdate.clear();
+                html5QrcodeScanner.clear();
             } catch(e) {}
-            html5QrcodeScannerUpdate = null;
+            html5QrcodeScanner = null;
         }
     }
 
-    async function onScanSuccessUpdate(decodedText, decodedResult) {
-        stopBarcodeScannerUpdate();
+    async function onScanSuccess(decodedText, decodedResult) {
+        // Stop scanning immediately on success
+        stopBarcodeScanner();
+        
+        let foundArticleNo = decodedText; // Default to the decoded text
+
+        // Smart Mapping: Search through products cache to see if barcode is linked
+        if (typeof productsCache !== 'undefined' && productsCache) {
+            const matchedP = productsCache.find(p => p.barcode === decodedText || p.article_no.toUpperCase() === decodedText.toUpperCase());
+            if (matchedP && matchedP.article_no) {
+                foundArticleNo = matchedP.article_no;
+            }
+        }
+
+        // Populate the input and auto-trigger the search
         const searchInput = document.getElementById('updateSearchInput');
-        searchInput.value = decodedText;
-        showToast("Barcode Scanned: " + decodedText);
-        searchUpdateProduct(); // Trigger the item lookup instantly
+        searchInput.value = foundArticleNo;
+        showToast("✅ Auto-Fetched: " + foundArticleNo);
+        
+        // Small delay to let UI settle, then trigger search
+        setTimeout(() => {
+            searchUpdateProduct();
+        }, 300);
     }
 
-    function onScanFailureUpdate(error) {
+    function onScanFailure(error) {
         // handle scan failure silently
     }
-</script>
-<script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-<script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
-<script>
-    setTimeout(() => initOCRWorker(true), 2500); // Wait for page to settle, then load AI into memory
-
-    // OCR Label Reader - Update Stock
-    document.getElementById('ocrImageInputUpdate').addEventListener('change', async function() {
-        const file = this.files[0];
-        if (!file) return;
-        this.value = '';
-
-        // Show image preview in the scanner viewport
-        const preview = document.getElementById('ocrPreviewUpdate');
-        const readerEl = document.getElementById('readerUpdate');
-        const imgURL = URL.createObjectURL(file);
-        preview.src = imgURL;
-        preview.style.display = 'block';
-        if (readerEl) readerEl.style.display = 'none';
-
-        await runOCRScan(
-            file,
-            (extracted) => {
-                // Check if we immediately recognized this article from the DB
-                const matchFound = (extracted.articleNo && typeof productsCache !== 'undefined') 
-                    ? productsCache.find(p => p.article_no.toUpperCase() === extracted.articleNo) 
-                    : null;
-
-                if (matchFound) {
-                    // ⚡ INSTANT MATCH: Skip popup and auto-fetch immediately!
-                    preview.style.display = 'none';
-                    if (readerEl) readerEl.style.display = 'block';
-                    URL.revokeObjectURL(imgURL);
-
-                    const searchInput = document.getElementById('updateSearchInput');
-                    searchInput.value = extracted.articleNo;
-                    showToast('⚡ Auto-Fetched: ' + extracted.articleNo);
-                    searchUpdateProduct();
-                } else {
-                    // Not in DB, show verification card
-                    showOCRConfirmCard(extracted, (confirmed) => {
-                        preview.style.display = 'none';
-                        if (readerEl) readerEl.style.display = 'block';
-                        URL.revokeObjectURL(imgURL);
-
-                        if (confirmed.articleNo) {
-                            const searchInput = document.getElementById('updateSearchInput');
-                            searchInput.value = confirmed.articleNo;
-                            showToast('✅ Article No applied: ' + confirmed.articleNo);
-                            setTimeout(() => searchUpdateProduct(), 300);
-                        } else {
-                            showToast('⚠️ Article No not detected. Please enter manually.');
-                        }
-                    });
-                }
-            },
-            (errMsg) => {
-                preview.style.display = 'none';
-                if (readerEl) readerEl.style.display = 'block';
-                URL.revokeObjectURL(imgURL);
-                showToast('❌ ' + errMsg);
-            }
-        );
-    });
 </script>
 {% endblock %}

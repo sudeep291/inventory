@@ -128,6 +128,7 @@ def fb_get_all_products_with_sizes(db, active_only=True):
             "mrp": safe_float(d.get('mrp')),
             "default_discount": safe_float(d.get('default_discount')),
             "selling_price": safe_float(d.get('selling_price')),
+            "barcode": d.get('barcode', ''),
             "total_stock": 0,
             "sizes": []
         }
@@ -507,6 +508,7 @@ def api_add_product():
     mrp = request.form.get('mrp')
     default_discount = request.form.get('default_discount')
     image = request.files.get('image')
+    barcode = clean_input(request.form.get('barcode'))
 
     if not all([name, article_no, category_id, sizes_json, mrp, default_discount]):
         return jsonify({"error": "Missing required fields"}), 400
@@ -554,6 +556,7 @@ def api_add_product():
             'default_discount': disc_f,
             'selling_price': selling_price,
             'is_active': True,
+            'barcode': barcode,
             'sizes': sizes_list
         })
         import threading

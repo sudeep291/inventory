@@ -104,17 +104,7 @@
             <div id="readerWrapper" class="scanner-wrapper-premium" style="display:none;">
                 <div class="scanner-inner">
                     <div id="reader" style="width:100%; border:none;"></div>
-                    <!-- OCR Preview: shows uploaded label photo in scanner area -->
-                    <img id="ocrPreviewSell" src="" alt="Label Preview" style="display:none; width:100%; max-height:300px; object-fit:contain; padding:0.5rem; background:#f8fafc;">
                     <div style="padding:1rem; text-align:center; background:var(--bg-white);">
-                        <!-- OCR Label Reader -->
-                        <div style="margin-bottom:0.75rem; padding-top:0.5rem; border-top:1px solid #e2e8f0;">
-                            <p style="color:#64748b; font-size:0.78rem; margin-bottom:0.5rem; font-weight:600;">📷 OR UPLOAD LABEL PHOTO</p>
-                            <label for="ocrImageInputSell" style="display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.2rem; background:linear-gradient(135deg,#f59e0b,#ea580c); color:#fff; font-weight:700; border-radius:8px; cursor:pointer; font-size:0.9rem; box-shadow:0 4px 10px rgba(234,88,12,0.3); transition:all 0.2s;">
-                                📋 Read Label (OCR)
-                            </label>
-                            <input type="file" id="ocrImageInputSell" accept=".jpg,.jpeg,.png,.webp" style="display:none;">
-                        </div>
                         <button class="btn danger" onclick="stopBarcodeScanner()" style="padding:0.4rem 1rem;">Cancel Scan</button>
                     </div>
                 </div>
@@ -215,10 +205,20 @@
         // Stop scanning immediately on success
         stopBarcodeScanner();
         
+        let foundArticleNo = decodedText; // Default to the decoded text
+
+        // Smart Mapping: Search through products cache to see if barcode is linked
+        if (typeof productsCache !== 'undefined' && productsCache) {
+            const matchedP = productsCache.find(p => p.barcode === decodedText || p.article_no.toUpperCase() === decodedText.toUpperCase());
+            if (matchedP && matchedP.article_no) {
+                foundArticleNo = matchedP.article_no;
+            }
+        }
+
         // Populate the input and auto-trigger the search
         const searchInput = document.getElementById('sellSearchInput');
-        searchInput.value = decodedText;
-        showToast("Barcode Scanned: " + decodedText);
+        searchInput.value = foundArticleNo;
+        showToast("✅ Auto-Fetched: " + foundArticleNo);
         
         // Small delay to let UI settle, then trigger search
         setTimeout(() => {
@@ -230,69 +230,5 @@
         // handle scan failure silently to avoid spam
     }
 </script>
-<script src="https://unpkg.com/tesseract.js@5.1.0/dist/tesseract.min.js"></script>
-<script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
-<script>
-    // Pre-load OCR worker when page is ready for faster first scan
-    setTimeout(() => initOCRWorker(true), 2500); // Wait for page to settle, then load AI into memory
-
-    // OCR Label Reader - Execute Sale
-    document.getElementById('ocrImageInputSell').addEventListener('change', async function() {
-        const file = this.files[0];
-        if (!file) return;
-        this.value = '';
-
-        // Show image preview in the scanner viewport (hide camera feed)
-        const preview = document.getElementById('ocrPreviewSell');
-        const reader = document.getElementById('reader');
-        const imgURL = URL.createObjectURL(file);
-        preview.src = imgURL;
-        preview.style.display = 'block';
-        if (readerEl) readerEl.style.display = 'none'; // hide camera while showing image
-
-        await runOCRScan(
-            file,
-            (extracted) => {
-                // Check if we immediately recognized this article from the DB
-                const matchFound = (extracted.articleNo && typeof productsCache !== 'undefined') 
-                    ? productsCache.find(p => p.article_no.toUpperCase() === extracted.articleNo) 
-                    : null;
-
-                if (matchFound) {
-                    // ⚡ INSTANT MATCH: Skip popup and auto-fetch immediately for sales!
-                    preview.style.display = 'none';
-                    if (readerEl) readerEl.style.display = 'block';
-                    URL.revokeObjectURL(imgURL);
-
-                    const searchInput = document.getElementById('sellSearchInput');
-                    searchInput.value = extracted.articleNo;
-                    showToast('⚡ Auto-Fetched: ' + extracted.articleNo);
-                    searchSellProduct();
-                } else {
-                    // Not in DB (or low confidence), show verification card
-                    showOCRConfirmCard(extracted, (confirmed) => {
-                        preview.style.display = 'none';
-                        if (readerEl) readerEl.style.display = 'block';
-                        URL.revokeObjectURL(imgURL);
-
-                        if (confirmed.articleNo) {
-                            const searchInput = document.getElementById('sellSearchInput');
-                            searchInput.value = confirmed.articleNo;
-                            showToast('✅ Article No applied: ' + confirmed.articleNo);
-                            setTimeout(() => searchSellProduct(), 300);
-                        } else {
-                            showToast('⚠️ Article No not detected. Please enter manually.');
-                        }
-                    });
-                }
-            },
-            (errMsg) => {
-                preview.style.display = 'none';
-                if (readerEl) readerEl.style.display = 'block';
-                URL.revokeObjectURL(imgURL);
-                showToast('❌ ' + errMsg);
-            }
-        );
-    });
 </script>
 {% endblock %}
