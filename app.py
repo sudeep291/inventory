@@ -12,6 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from db import get_db_connection, init_db, release_db_connection
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask_compress import Compress
+from whitenoise import WhiteNoise
 from PIL import Image
 import io
 import bleach
@@ -230,6 +231,7 @@ app.config.update(
 )
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+app.wsgi_app = WhiteNoise(app.wsgi_app, root='static/')
 Compress(app)
 
 # 🛡️ CSRF & SECURITY CONFIGURATION
