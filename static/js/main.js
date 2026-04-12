@@ -180,9 +180,13 @@ async function loadOverviewTable() {
                 
                 <div class="prod-meta"><strong>Total Stock:</strong> <span class="val text-primary" style="font-weight:700">${p.total_stock}</span></div>
                 
-                <div style="display:flex; flex-wrap:wrap; gap:0.25rem; border-top:1px solid var(--border); padding-top:1rem;">
+                <div style="display:flex; flex-wrap:wrap; gap:0.25rem; border-top:1px solid var(--border); padding-top:1rem; margin-bottom:1rem;">
                     ${sizeHTML || '<span style="color:var(--text-secondary); font-size:0.85rem">No active sizes</span>'}
                 </div>
+                
+                <button class="btn danger outline full-width" style="padding:0.5rem; font-size:0.75rem; background:transparent; color:var(--loss); border:1px solid rgba(239,68,68,0.2); transition:0.2s;" onmouseover="this.style.background='var(--loss)'; this.style.color='white'" onmouseout="this.style.background='transparent'; this.style.color='var(--loss)'" onclick="removeProduct('${p.id}', '${p.name}')">
+                    Delete Product
+                </button>
             </div>
         `;
         grid.appendChild(card);
@@ -232,6 +236,21 @@ async function removeProductImage(productId) {
     if(data && data.success) {
         showToast("Product image removed successfully!");
         await loadOverviewTable();
+    }
+}
+
+async function removeProduct(productId, productName) {
+    if(!confirm(`⚠️ CRITICAL: Are you sure you want to delete ${productName}?\n\nThis will remove it from the active inventory.`)) return;
+    const data = await fetchAPI('/api/products/remove', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_id: productId })
+    });
+    if(data && data.success) {
+        showToast("Product deleted successfully");
+        await loadOverviewTable();
+        // Also refresh dashboard stats if visible
+        if(document.getElementById('dashCards')) loadWelcomeDashboard();
     }
 }
 
