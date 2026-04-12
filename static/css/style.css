@@ -1171,11 +1171,6 @@ body.dark-theme .return-toggle.active {
     transform: scale(0.95) !important;
 }
 
-/* Hide noisy text and links from the library */
-#reader a, #readerAdd a {
-    display: none !important;
-}
-
 /* Fix dropdown select inside scanner - HIDE on mobile if needed */
 #reader select, #readerAdd select, #readerUpdate select, #readerHistory select {
     display: none !important; /* Forces the default (back) camera without user selection overhead */
@@ -1186,4 +1181,7 @@ body.dark-theme .return-toggle.active {
     display: none !important;
 }
 
-#reader__dashboard_section_csr span, #readerAdd__dashboard_section_csr span {
+/* Hide noisy text from Scanner Dashboard */
+#reader__dashboard_section_csr span, #readerAdd__dashboard_section_csr span, #readerUpdate__dashboard_section_csr span, #readerHistory__dashboard_section_csr span {
+    display: none !important;
+}
