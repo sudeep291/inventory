@@ -490,6 +490,8 @@ def api_add_category():
             'name_lower': name.lower()
         })
         new_id = new_ref[1].id
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"id": new_id, "name": name})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -554,6 +556,8 @@ def api_add_product():
             'is_active': True,
             'sizes': sizes_list
         })
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"api_add_product error: {e}")
@@ -574,6 +578,8 @@ def api_update_product_image(id):
             return jsonify({"error": "Failed to process image"}), 400
         db = get_db()
         db.collection('Products').document(id).update({'image_path': image_data_uri})
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"success": True, "image_path": image_data_uri})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -584,6 +590,8 @@ def api_remove_product_image(id):
     try:
         db = get_db()
         db.collection('Products').document(id).update({'image_path': None})
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -596,6 +604,8 @@ def api_remove_product():
     try:
         db = get_db()
         db.collection('Products').document(product_id).update({'is_active': False})
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -773,6 +783,8 @@ def api_adjust_stock_batch():
                             prod_doc.reference.update({'mrp': nm, 'selling_price': new_sp})
                         break
 
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
         return jsonify({"success": True})
     except Exception as e:
         logger.error(f"api_adjust_stock_batch error: {e}")
