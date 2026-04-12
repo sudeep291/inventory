@@ -1,4 +1,4 @@
-﻿{% extends 'layout.html' %}
+{% extends 'layout.html' %}
 {% block content %}
 <main class="dashboard-layout animate-fade-up">
     
@@ -26,6 +26,7 @@
                         <div style="color: #047857; font-family: monospace; font-size: 1.2rem; letter-spacing: 1.5px; font-weight: 900;" id="visualBarcodeDisplay"></div>
                     </div>
                 </div>
+
                 <!-- Barcode Scanner Viewport -->
                 <div id="readerWrapperAdd" class="scanner-wrapper-premium" style="display:none;">
                     <div class="scanner-inner">
@@ -43,7 +44,7 @@
             </div>
 
             <div class="form-group">
-                <label>MRP (â‚¹)</label>
+                <label>MRP (₹)</label>
                 <input type="number" step="0.01" name="mrp" placeholder="Maximum Retail Price" required>
             </div>
             <div class="form-group">
@@ -83,20 +84,20 @@
                 </style>
                 <div style="display:flex; gap:1rem; align-items:center;">
                     <button type="button" class="upload-btn-choice" onclick="triggerFileUpload()">
-                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">ðŸ“</span>
+                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">📂</span>
                         Upload File
                     </button>
                     <button type="button" class="upload-btn-choice" onclick="openWebcam()">
-                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">ðŸ“¸</span>
+                        <span style="font-size:1.5rem; display:block; margin-bottom:0.5rem;">📸</span>
                         Take Photo
                     </button>
                 </div>
-                <input type="file" name="image" id="productImage" accept="image/*" style="display:none;" onchange="previewImage(this)">
+                <input type="file" name="image" id="productImage" accept="image/*" style="display:none;" onchange="handleFileSelect(this)">
                 
                 <div id="imagePreviewContainer" style="margin-top: 1rem; display: none; text-align: center;">
-                    <img id="imagePreview" src="" alt="Preview" style="max-height: 200px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 0.5rem;">
+                    <img id="imagePreview" src="" alt="Preview" style="max-height: 250px; width: auto; border-radius: 12px; border: 2px solid var(--primary); margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
                     <div>
-                        <button type="button" class="btn outline" style="color:var(--danger); border-color:var(--danger); padding:0.5rem 1rem; font-size:0.8rem;" onclick="clearImage()">Remove Photo</button>
+                        <button type="button" class="btn danger outline" style="padding:0.5rem 1rem; font-size:0.8rem;" onclick="clearImage()">Remove Photo</button>
                     </div>
                 </div>
             </div>
@@ -112,15 +113,15 @@
         </form>
     </div>
 
-    <!-- Webcam Modal -->
+    <!-- Webcam Modal for Photos -->
     <div id="webcamModal">
-        <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; max-width: 90vw;">
+        <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; max-width: 90vw; position: relative;">
             <h3 style="margin-bottom: 1rem;">Take a Photo</h3>
             <video id="webcamVideo" autoplay playsinline style="width: 100%; max-width: 400px; border-radius: 8px; background: #000; margin-bottom: 1rem;"></video>
             <canvas id="webcamCanvas" style="display:none;"></canvas>
             <div style="display:flex; gap: 1rem; justify-content: center;">
                 <button type="button" class="btn outline" onclick="closeWebcam()">Cancel</button>
-                <button type="button" class="btn primary" onclick="snapPhoto()">ðŸ“¸ Snap Photo</button>
+                <button type="button" class="btn primary" onclick="snapPhoto()">📸 Snap Photo</button>
             </div>
         </div>
     </div>
@@ -151,65 +152,20 @@
         document.getElementById('productImage').click();
     }
 
-    let stream = null;
-    
-    async function openWebcam() {
-        const modal = document.getElementById('webcamModal');
-        const video = document.getElementById('webcamVideo');
-        modal.style.display = 'flex';
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            video.srcObject = stream;
-        } catch (err) {
-            alert('Camera access denied or unavailabe.');
-            closeWebcam();
-        }
-    }
-
-    function closeWebcam() {
-        document.getElementById('webcamModal').style.display = 'none';
-        if (stream) {
-            stream.getTracks().forEach(track => track.stop());
-            stream = null;
-        }
-    }
-
-    function snapPhoto() {
-        const video = document.getElementById('webcamVideo');
-        const canvas = document.getElementById('webcamCanvas');
-        if (!stream) return;
-        
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        
-        const dataUrl = canvas.toDataURL('image/jpeg');
-        
-        // Convert to file
-        let arr = dataUrl.split(','), mime = arr[0].match(/:(.*?);/)[1];
-        let bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
-        while(n--){ u8arr[n] = bstr.charCodeAt(n); }
-        let file = new File([u8arr], "webcam_photo.jpg", {type:mime});
-        
-        let container = new DataTransfer();
-        container.items.add(file);
-        const fileInput = document.getElementById('productImage');
-        fileInput.files = container.files;
-        
-        previewImage(fileInput);
-        closeWebcam();
-    }
-
-    function previewImage(input) {
+    /* --- Image Preview Logic --- */
+    function handleFileSelect(input) {
         if (input.files && input.files[0]) {
             const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('imagePreview').src = e.target.result;
-                document.getElementById('imagePreviewContainer').style.display = 'block';
-            }
+            reader.onload = (e) => updatePreview(e.target.result);
             reader.readAsDataURL(input.files[0]);
         }
+    }
+
+    function updatePreview(dataUrl) {
+        const previewEl = document.getElementById('imagePreview');
+        const containerEl = document.getElementById('imagePreviewContainer');
+        previewEl.src = dataUrl;
+        containerEl.style.display = 'block';
     }
 
     function clearImage() {
@@ -217,17 +173,70 @@
         document.getElementById('imagePreviewContainer').style.display = 'none';
         document.getElementById('imagePreview').src = '';
     }
+
+    /* --- Webcam Logic --- */
+    let photoStream = null;
+    async function openWebcam() {
+        if (typeof stopBarcodeScannerAdd === 'function') stopBarcodeScannerAdd();
+        const modal = document.getElementById('webcamModal');
+        const video = document.getElementById('webcamVideo');
+        modal.style.display = 'flex';
+        try {
+            photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            video.srcObject = photoStream;
+        } catch (err) {
+            alert('Camera access denied.');
+            closeWebcam();
+        }
+    }
+
+    function closeWebcam() {
+        document.getElementById('webcamModal').style.display = 'none';
+        if (photoStream) {
+            photoStream.getTracks().forEach(track => track.stop());
+            photoStream = null;
+        }
+    }
+
+    function snapPhoto() {
+        const video = document.getElementById('webcamVideo');
+        const canvas = document.getElementById('webcamCanvas');
+        if (!photoStream) return;
+        
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        updatePreview(dataUrl);
+
+        // Convert to File for form submission
+        const blob = dataURLToBlob(dataUrl);
+        const file = new File([blob], "photo.jpg", { type: "image/jpeg" });
+        const container = new DataTransfer();
+        container.items.add(file);
+        document.getElementById('productImage').files = container.files;
+
+        closeWebcam();
+    }
+
+    function dataURLToBlob(dataurl) {
+        var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+        while(n--){ u8arr[n] = bstr.charCodeAt(n); }
+        return new Blob([u8arr], {type:mime});
+    }
 </script>
+
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
-        // Enhanced 1-Click Barcode Scanner Logic with Purity Filter & Duplicate Check
+    /* --- Enhanced Barcode Scanner Logic --- */
     let addScanner = null;
 
     const cleanBarcode = (text) => {
         let cleaned = text.replace(/[^\d]/g, "");
-        if (cleaned.startsWith("890") && cleaned.length > 13) {
-            cleaned = cleaned.substring(0, 13);
-        }
+        if (cleaned.startsWith("890") && cleaned.length > 13) cleaned = cleaned.substring(0, 13);
         return cleaned;
     };
 
@@ -236,48 +245,28 @@
         document.getElementById('readerWrapperAdd').style.display = 'block';
         
         try {
-            if (!addScanner) {
-                addScanner = new Html5Qrcode('readerAdd');
-            }
-
+            if (!addScanner) addScanner = new Html5Qrcode('readerAdd');
             const config = { 
                 fps: 20, 
                 qrbox: { width: 300, height: 160 },
                 aspectRatio: 1.0,
-                formatsToSupport: [ 
-                    Html5QrcodeSupportedFormats.EAN_13, 
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.EAN_8
-                ]
+                formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.CODE_128]
             };
 
-            await addScanner.start(
-                { facingMode: 'environment' }, 
-                config,
-                (decodedText) => {
-                    const finalCode = cleanBarcode(decodedText);
-                    
-                    // Duplicate Check: Alert if barcode is already linked elsewhere
-                    if (typeof productsCache !== 'undefined' && productsCache.length > 0) {
-                        const existing = productsCache.find(p => p.barcode === finalCode);
-                        if (existing) {
-                            showToast(`âš ï¸  ALERT: Already linked to Article [${existing.article_no}]`);
-                            // We still fill it for them to see, but warn them clearly
-                        }
-                    }
-
-                    document.getElementById('hiddenBarcode').value = finalCode;
-                    document.getElementById('visualBarcodeDisplay').innerText = finalCode;
-                    document.getElementById('barcodeConfirmationArea').style.display = 'flex';
-                    showToast('âœ… Barcode Captured!');
-                    
-                    stopBarcodeScannerAdd();
-                },
-                (err) => {}
-            );
+            await addScanner.start({ facingMode: 'environment' }, config, (decodedText) => {
+                const finalCode = cleanBarcode(decodedText);
+                if (typeof productsCache !== 'undefined') {
+                    const existing = productsCache.find(p => p.barcode === finalCode);
+                    if (existing) showToast(`⚠️ ALERT: Already linked to [${existing.article_no}]`);
+                }
+                document.getElementById('hiddenBarcode').value = finalCode;
+                document.getElementById('visualBarcodeDisplay').innerText = finalCode;
+                document.getElementById('barcodeConfirmationArea').style.display = 'flex';
+                showToast('✅ Barcode Linked!');
+                stopBarcodeScannerAdd();
+            }, (err) => {});
         } catch (err) {
-            console.error(err);
-            showToast('â Œ Camera Error: Check permissions');
+            showToast('❌ Scanner Error');
             document.getElementById('readerWrapperAdd').style.display = 'none';
         }
     });
@@ -287,12 +276,8 @@
         if (addScanner) {
             addScanner.stop().then(() => {
                 document.getElementById('readerAdd').innerHTML = '';
-            }).catch(e => {}).finally(() => {
-                addScanner = null;
-            });
+            }).catch(e => {}).finally(() => { addScanner = null; });
         }
     }
 </script>
 {% endblock %}
-
-
