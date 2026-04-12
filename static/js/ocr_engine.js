@@ -8,24 +8,25 @@ let ocrReady = false;
 let initPromise = null;
 
 /**
- * Initialize Tesseract worker (lazy — only when user first taps Read Label)
+ * Initialize Tesseract worker natively. 
+ * Can be called silently on page load to pre-warm the engine.
  */
-async function initOCRWorker() {
+async function initOCRWorker(silent = false) {
     if (ocrWorker && ocrReady) return true;
     
     // If already downloading, wait for that download to finish instead of failing
     if (initPromise) {
-        if (typeof showToast === 'function') showToast('⏳ Still downloading AI model, please wait...');
+        if (!silent && typeof showToast === 'function') showToast('⏳ Downloading AI model in background, please wait...');
         return await initPromise;
     }
 
-    if (typeof showToast === 'function') showToast('⏳ Loading OCR engine (first time only, ~10MB)...');
+    if (!silent && typeof showToast === 'function') showToast('⏳ Initiating OCR AI model download (10MB)...');
 
     initPromise = new Promise(async (resolve) => {
         // Failsafe timeout in case download hangs from bad network
         let dlTimeout = setTimeout(() => {
             console.error('[OCR] Model download timed out.');
-            if (typeof showToast === 'function') showToast('❌ OCR download failed. Please check internet connection.');
+            if (!silent && typeof showToast === 'function') showToast('❌ OCR download failed. Please check internet connection.');
             initPromise = null;
             resolve(false);
         }, 60000); // 60s max wait for 10MB on slow 3G
@@ -36,7 +37,7 @@ async function initOCRWorker() {
             
             clearTimeout(dlTimeout);
             ocrReady = true;
-            if (typeof showToast === 'function') showToast('✅ OCR engine ready!');
+            if (!silent && typeof showToast === 'function') showToast('✅ OCR AI engine is now ready to scan!');
             resolve(true);
         } catch (e) {
             clearTimeout(dlTimeout);

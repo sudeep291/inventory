@@ -306,7 +306,7 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', () => { initOCRWorker(); });
+    initOCRWorker(true); // Pre-warm the OCR engine silently on page load
 
     // OCR Label Reader - Add Product (fills Article No + MRP + Company Name)
     document.getElementById('ocrImageInputAdd').addEventListener('change', async function() {

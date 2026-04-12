@@ -234,7 +234,7 @@
 <script src="{{ url_for('static', filename='js/ocr_engine.js') }}"></script>
 <script>
     // Pre-load OCR worker when page is ready for faster first scan
-    document.addEventListener('DOMContentLoaded', () => { initOCRWorker(); });
+    initOCRWorker(true); // Pre-warm the OCR engine silently on page load
 
     // OCR Label Reader - Execute Sale
     document.getElementById('ocrImageInputSell').addEventListener('change', async function() {
