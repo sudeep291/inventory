@@ -14,8 +14,17 @@ def get_db_connection():
         try:
             # Avoid re-initializing if already done
             if not firebase_admin._apps:
-                cred_path = os.path.join(os.path.dirname(__file__), 'firebase_credentials.json')
-                cred = credentials.Certificate(cred_path)
+                import json
+                env_cred = os.environ.get("FIREBASE_CREDENTIALS_JSON")
+                if env_cred:
+                    cred_dict = json.loads(env_cred)
+                    cred = credentials.Certificate(cred_dict)
+                else:
+                    cred_path = os.path.join(os.path.dirname(__file__), 'firebase_credentials.json')
+                    if not os.path.exists(cred_path):
+                        raise RuntimeError("Missing firebase_credentials.json file and FIREBASE_CREDENTIALS_JSON env var")
+                    cred = credentials.Certificate(cred_path)
+                
                 firebase_admin.initialize_app(cred)
             _db = firestore.client()
             print("FIREBASE: Connected to Firestore successfully.")
