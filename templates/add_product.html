@@ -339,22 +339,27 @@
                     const nameInput = document.querySelector('input[name="name"]');
                     if (nameInput && confirmed.companyName) nameInput.value = confirmed.companyName;
 
-                    // Check if article already exists in your own inventory
+                    // Count what was filled
+                    let filled = [];
+                    if (artInput && confirmed.articleNo) filled.push('Article No');
+                    if (mrpInput && confirmed.mrp) filled.push('MRP');
+                    if (nameInput && confirmed.companyName) filled.push('Company Name');
+
                     if (confirmed.articleNo && typeof productsCache !== 'undefined') {
                         const existing = productsCache.find(p => p.article_no === confirmed.articleNo);
                         if (existing) {
                             if (mrpInput) mrpInput.value = existing.mrp || confirmed.mrp || '';
                             if (nameInput) nameInput.value = existing.name || confirmed.companyName || '';
                             const discInput = document.querySelector('input[name="default_discount"]');
-                            if (discInput) discInput.value = existing.default_discount || 0;
+                            if (discInput) { discInput.value = existing.default_discount || 0; filled.push('Discount'); }
                             const catSelect = document.getElementById('categorySelect');
-                            if (catSelect) catSelect.value = existing.category_id || '';
-                            showToast('✅ Matched existing product — all fields auto-filled!');
+                            if (catSelect) { catSelect.value = existing.category_id || ''; filled.push('Category'); }
+                            showToast('✅ All fields extracted & filled: ' + filled.join(', '));
                         } else {
-                            showToast('✅ New product — Article, MRP & Company applied from label.');
+                            showToast('✅ Extracted & filled: ' + filled.join(', ') + ' (New article — complete remaining fields)');
                         }
                     } else {
-                        showToast('✅ Label data applied. Please fill remaining fields.');
+                        showToast('✅ Extracted & filled: ' + (filled.join(', ') || 'no fields detected'));
                     }
                 });
             },

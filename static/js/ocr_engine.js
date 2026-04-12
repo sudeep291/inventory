@@ -1,59 +1,76 @@
 /**
- * OCR Engine - Enterprise Label Reader v2
- * Fixed for Tesseract.js v5 API
- * Extracts Article No, MRP, Company Name from IS 6721 Indian footwear labels.
+ * OCR Engine - Enterprise Label Reader v3
+ * Fixed: Progress toasts, timeout detection, DB existence check, better error messages
  */
 
 let ocrWorker = null;
 let ocrReady = false;
+let ocrInitializing = false;
 
 /**
- * Pre-load Tesseract.js v5 worker on page load for faster first scan.
+ * Initialize Tesseract worker (lazy — only when user first taps Read Label)
  */
 async function initOCRWorker() {
-    if (ocrWorker && ocrReady) return;
+    if (ocrWorker && ocrReady) return true;
+    if (ocrInitializing) return false;
+
+    ocrInitializing = true;
+    if (typeof showToast === 'function') showToast('⏳ Loading OCR engine (first time only)...');
+
     try {
-        // Tesseract.js v5 API: createWorker(lang)
-        ocrWorker = await Tesseract.createWorker('eng');
+        ocrWorker = await Tesseract.createWorker('eng', 1, {
+            workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/worker.min.js',
+            langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+            corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5/tesseract-core.wasm.js',
+            logger: (m) => {
+                if (m.status === 'recognizing text') {
+                    // silent during recognition
+                }
+                if (m.status === 'loading tesseract core' || m.status === 'loading language traineddata') {
+                    if (typeof showToast === 'function') showToast('⚙️ Loading AI model...');
+                }
+            }
+        });
         ocrReady = true;
-        console.log('[OCR] Worker ready (v5).');
+        ocrInitializing = false;
+        if (typeof showToast === 'function') showToast('✅ OCR engine ready!');
+        return true;
     } catch (e) {
-        console.warn('[OCR] Pre-load failed, will retry on scan.', e);
+        console.error('[OCR] Worker init failed:', e);
         ocrWorker = null;
         ocrReady = false;
+        ocrInitializing = false;
+        return false;
     }
 }
 
 /**
- * Extract label fields using regex patterns for IS 6721 Indian footwear labels.
+ * Extract label data using IS 6721 Indian footwear label patterns
  */
 function extractLabelData(rawText) {
     const text = rawText.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+    console.log('[OCR] Raw text:\n', rawText);
+
     const result = { articleNo: null, mrp: null, companyName: null, confidence: 'low' };
 
-    // --- Article No ---
-    // IS 6721 labels always have the article number as the FIRST large text
-    // Patterns: WG5511, RJ2034, NK-1122, MC3456, A1234
+    // Article No: e.g. WG5511, RJ2034, NB-1122
     const articlePatterns = [
-        /\b([A-Z]{2,5}-?\d{3,6})\b/,   // e.g. WG5511, RJ-2034
-        /\b([A-Z]\d{3,6}[A-Z]?)\b/,    // e.g. A1234, A1234B
+        /\b([A-Z]{2,5}-?\d{3,6})\b/,
+        /\b([A-Z]\d{4,6})\b/,
     ];
     for (const pat of articlePatterns) {
         const m = text.match(pat);
         if (m) { result.articleNo = m[1].toUpperCase().replace(/\s/g, ''); break; }
     }
 
-    // --- MRP ---
-    // Matches: "MRP. ₹234.00", "MRP Rs 234", "MRP234"
-    const mrpMatch = text.match(/MRP[.\s]*[₹RsS]*[\s.]*(\d{2,5}(?:\.\d{1,2})?)/i);
+    // MRP: e.g. "MRP. ₹234.00", "MRP 234"
+    const mrpMatch = text.match(/MRP[^0-9]*(\d{2,5}(?:\.\d{1,2})?)/i);
     if (mrpMatch) result.mrp = parseFloat(mrpMatch[1]).toFixed(2);
 
-    // --- Company Name ---
-    // Matches: "MANUFACTURED BY: WALKAROO INTERNATIONAL PVT LTD"
+    // Company from "MANUFACTURED BY: WALKAROO..."
     const companyMatch = text.match(/MANUFACTURED\s+BY[:\s]+([A-Z][A-Za-z]+(?:\s[A-Z][A-Za-z]+)?)/i);
     if (companyMatch) result.companyName = companyMatch[1].trim();
 
-    // --- Confidence ---
     const found = [result.articleNo, result.mrp, result.companyName].filter(Boolean).length;
     result.confidence = found >= 2 ? 'high' : found === 1 ? 'medium' : 'failed';
 
@@ -61,83 +78,118 @@ function extractLabelData(rawText) {
 }
 
 /**
- * Run OCR on an image file using Tesseract.js v5
+ * Main OCR scan function with timeout and progress
  */
 async function runOCRScan(imageFile, onResult, onError) {
+    // Initialize worker if not ready
+    const ready = await initOCRWorker();
+    if (!ready || !ocrWorker) {
+        onError('OCR engine could not start. Check your internet connection and try again.');
+        return;
+    }
+
+    if (typeof showToast === 'function') showToast('🔍 Reading label text...');
+
+    // 45-second timeout guard
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+        timedOut = true;
+        onError('OCR timed out. Please try a clearer, well-lit photo of the label.');
+    }, 45000);
+
     try {
-        if (typeof showToast === 'function') showToast('🔍 Reading label, please wait...');
-
-        // Ensure worker is ready
-        if (!ocrWorker || !ocrReady) {
-            await initOCRWorker();
-        }
-
-        if (!ocrWorker) {
-            onError('OCR engine failed to start. Please refresh and try again.');
-            return;
-        }
-
-        // Tesseract.js v5: worker.recognize(image)
         const { data } = await ocrWorker.recognize(imageFile);
+        clearTimeout(timeoutId);
+
+        if (timedOut) return;
+
         const rawText = data.text || '';
-
-        console.log('[OCR] Raw text extracted:\n', rawText);
-
         if (rawText.trim().length < 3) {
-            onError('Image too blurry or dark. Please use a clear, well-lit photo.');
+            onError('Image too blurry or dark. Please use a clear photo with good lighting.');
             return;
         }
 
         const extracted = extractLabelData(rawText);
-        console.log('[OCR] Extracted data:', extracted);
 
         if (extracted.confidence === 'failed') {
-            onError('Could not read label format. Ensure Article No and MRP are visible.');
+            onError('Label format not recognized. Ensure Article No and MRP are clearly visible in the photo.');
             return;
         }
 
         onResult(extracted);
-
     } catch (e) {
-        console.error('[OCR] Error:', e);
-        onError('OCR scan failed. Please try again with a clearer image.');
+        clearTimeout(timeoutId);
+        if (!timedOut) {
+            console.error('[OCR] recognize error:', e);
+            onError('OCR scan failed. Please try again with a better quality photo.');
+        }
     }
 }
 
 /**
- * Verification card — user must confirm before data is applied.
- * Enterprise data integrity: nothing is auto-applied without human approval.
+ * Check if article exists in your Firestore cache
  */
-function showOCRConfirmCard(extracted, onConfirm) {
+function checkArticleInDB(articleNo) {
+    if (typeof productsCache === 'undefined' || !productsCache) return null;
+    return productsCache.find(p =>
+        p.article_no && p.article_no.toUpperCase() === articleNo.toUpperCase()
+    ) || null;
+}
+
+/**
+ * Verification + DB-check card shown before applying data
+ */
+function showOCRConfirmCard(extracted, onConfirm, mode) {
     const existing = document.getElementById('ocrConfirmCard');
     if (existing) existing.remove();
 
     const confidenceColor = extracted.confidence === 'high' ? '#10b981' : '#f59e0b';
     const confidenceLabel = extracted.confidence === 'high' ? '✅ High Confidence' : '⚠️ Medium Confidence';
 
+    // DB check
+    let dbStatusHTML = '';
+    if (extracted.articleNo) {
+        const match = checkArticleInDB(extracted.articleNo);
+        if (match) {
+            const sizeList = (match.sizes || []).map(s => `UK ${s.size}`).join(', ');
+            dbStatusHTML = `
+                <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:0.75rem;margin-bottom:0.75rem;">
+                    <p style="color:#15803d;font-weight:700;font-size:0.85rem;margin:0;">✅ Found in your inventory!</p>
+                    <p style="color:#166534;font-size:0.78rem;margin:0.25rem 0 0;">Sizes: ${sizeList || 'N/A'}</p>
+                </div>`;
+        } else {
+            dbStatusHTML = `
+                <div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:0.75rem;margin-bottom:0.75rem;">
+                    <p style="color:#92400e;font-weight:700;font-size:0.85rem;margin:0;">⚠️ New article — not in your inventory yet</p>
+                    <p style="color:#78350f;font-size:0.78rem;margin:0.25rem 0 0;">You can add it using the form.</p>
+                </div>`;
+        }
+    }
+
     const card = document.createElement('div');
     card.id = 'ocrConfirmCard';
     card.style.cssText = `
         position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-        background:#fff; border-radius:16px; padding:1.5rem; width:90%; max-width:380px;
+        background:#fff; border-radius:16px; padding:1.5rem; width:92%; max-width:380px;
         box-shadow:0 20px 60px rgba(0,0,0,0.35); z-index:99999;
-        border:2px solid #e2e8f0; font-family:'Inter',sans-serif; animation: fadeUp 0.2s ease;
+        border:2px solid #e2e8f0; font-family:'Inter',sans-serif;
     `;
 
     card.innerHTML = `
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
-            <h3 style="margin:0;color:#1e293b;font-size:1.1rem;">📋 Label Detected</h3>
-            <span style="background:${confidenceColor}22;color:${confidenceColor};padding:0.2rem 0.7rem;border-radius:20px;font-size:0.72rem;font-weight:700;">${confidenceLabel}</span>
+            <h3 style="margin:0;color:#1e293b;font-size:1.05rem;">📋 Label Data Extracted</h3>
+            <span style="background:${confidenceColor}22;color:${confidenceColor};padding:0.2rem 0.6rem;border-radius:20px;font-size:0.7rem;font-weight:700;">${confidenceLabel}</span>
         </div>
-        <div style="background:#f8fafc;border-radius:10px;padding:1rem;margin-bottom:1rem;border:1px solid #e2e8f0;">
-            ${extracted.articleNo ? `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid #e2e8f0;"><span style="color:#64748b;font-size:0.82rem;">Article No</span><strong style="color:#7c3aed;">${extracted.articleNo}</strong></div>` : '<div style="color:#ef4444;font-size:0.8rem;padding:0.3rem 0;">⚠️ Article No not found in image</div>'}
-            ${extracted.mrp ? `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px dashed #e2e8f0;"><span style="color:#64748b;font-size:0.82rem;">MRP</span><strong style="color:#10b981;">₹${extracted.mrp}</strong></div>` : ''}
-            ${extracted.companyName ? `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;"><span style="color:#64748b;font-size:0.82rem;">Company</span><strong style="color:#1e293b;">${extracted.companyName}</strong></div>` : ''}
+        ${dbStatusHTML}
+        <div style="background:#f8fafc;border-radius:10px;padding:0.75rem;margin-bottom:0.75rem;border:1px solid #e2e8f0;">
+            ${extracted.articleNo ? `<div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid #f1f5f9;"><span style="color:#64748b;font-size:0.8rem;">Article No</span><strong style="color:#7c3aed;">${extracted.articleNo}</strong></div>` : `<div style="color:#ef4444;font-size:0.78rem;padding:0.3rem;">⚠️ Article No not detected</div>`}
+            ${extracted.mrp ? `<div style="display:flex;justify-content:space-between;padding:0.35rem 0;border-bottom:1px solid #f1f5f9;"><span style="color:#64748b;font-size:0.8rem;">MRP</span><strong style="color:#10b981;">₹${extracted.mrp}</strong></div>` : ''}
+            ${extracted.companyName ? `<div style="display:flex;justify-content:space-between;padding:0.35rem 0;"><span style="color:#64748b;font-size:0.8rem;">Company</span><strong style="color:#1e293b;">${extracted.companyName}</strong></div>` : ''}
         </div>
-        <p style="color:#94a3b8;font-size:0.75rem;margin-bottom:1rem;">⚠️ Verify data before applying. Wrong entries affect your inventory reports.</p>
+        <p style="color:#94a3b8;font-size:0.73rem;margin-bottom:1rem;">Verify data before applying — incorrect entries affect your reports.</p>
         <div style="display:flex;gap:0.75rem;">
-            <button onclick="document.getElementById('ocrConfirmCard').remove();" style="flex:1;padding:0.75rem;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;cursor:pointer;font-size:0.9rem;">Cancel</button>
-            <button id="ocrApplyBtn" style="flex:2;padding:0.75rem;border:none;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:700;cursor:pointer;font-size:0.95rem;">✅ Apply to Form</button>
+            <button onclick="document.getElementById('ocrConfirmCard').remove();" style="flex:1;padding:0.7rem;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#64748b;font-weight:600;cursor:pointer;font-size:0.88rem;">Cancel</button>
+            <button id="ocrApplyBtn" style="flex:2;padding:0.7rem;border:none;border-radius:8px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-weight:700;cursor:pointer;font-size:0.92rem;">✅ Apply to Form</button>
         </div>
     `;
 
