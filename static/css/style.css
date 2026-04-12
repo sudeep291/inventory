@@ -1185,3 +1185,35 @@ body.dark-theme .return-toggle.active {
 #reader__dashboard_section_csr span, #readerAdd__dashboard_section_csr span, #readerUpdate__dashboard_section_csr span, #readerHistory__dashboard_section_csr span {
     display: none !important;
 }
+
+/* Smart Search Suggestions UI */
+.search-suggestions-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    max-height: 250px;
+    overflow-y: auto;
+    display: none;
+    margin-top: 5px;
+    animation: slideDown 0.2s ease-out;
+}
+.suggestion-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+}
+.suggestion-item:last-child { border-bottom: none; }
+.suggestion-item:hover { background: #f0f7ff; color: var(--primary); }
+.suggestion-item .art-no { font-weight: 800; font-size: 1rem; color: #1e293b; }
+.suggestion-item .prod-name { font-size: 0.85rem; color: #64748b; }
+

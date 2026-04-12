@@ -90,7 +90,7 @@
         <div class="search-section" style="text-align:left; margin-bottom:2rem;">
             <label style="font-weight:600;display:block;margin-bottom:0.5rem">Search Article No.</label>
             <div style="display:flex; gap:1rem; flex-wrap: wrap;">
-                <input type="text" id="sellSearchInput" placeholder="ex. ART-101" style="flex:1;">
+                <div style="flex:1; position:relative;"><input type="text" id="sellSearchInput" placeholder="ex. ART-101" style="width:100%;" autocomplete="off"><div id="sellSuggestions" class="search-suggestions-box"></div></div>
                 <button type="button" class="btn-search-mix" onclick="searchSellProduct()">
                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="margin-right:0.5rem"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                     Search Item
@@ -180,6 +180,47 @@
         return cleaned;
     };
 
+    
+    // --- Manual Search Suggestions Logic ---
+    const sellInput = document.getElementById('sellSearchInput');
+    const sellSuggBox = document.getElementById('sellSuggestions');
+
+    sellInput.addEventListener('input', () => {
+        const q = sellInput.value.trim().toLowerCase();
+        if (q.length < 1) { sellSuggBox.style.display = 'none'; return; }
+        
+        const matches = productsCache.filter(p => 
+            p.article_no.toLowerCase().includes(q) || 
+            (p.barcode && p.barcode.toLowerCase().includes(q)) ||
+            p.name.toLowerCase().includes(q)
+        ).slice(0, 8);
+
+        if (matches.length > 0) {
+            sellSuggBox.innerHTML = matches.map(p => `
+                <div class="suggestion-item" onclick="selectSellSuggestion('${p.article_no}')">
+                    <span class="art-no">${p.article_no}</span>
+                    <span class="prod-name">${p.name}</span>
+                </div>
+            `).join('');
+            sellSuggBox.style.display = 'block';
+        } else {
+            sellSuggBox.style.display = 'none';
+        }
+    });
+
+    window.selectSellSuggestion = (artNo) => {
+        sellInput.value = artNo;
+        sellSuggBox.style.display = 'none';
+        searchSellProduct();
+    };
+
+    document.addEventListener('click', (e) => {
+        if (!sellInput.contains(e.target) && !sellSuggBox.contains(e.target)) {
+            sellSuggBox.style.display = 'none';
+        }
+    });
+    // --- End Suggestions Logic ---
+
     document.getElementById('btnScanBarcode').addEventListener('click', async () => {
         document.getElementById('readerWrapper').style.display = 'block';
         
@@ -240,4 +281,5 @@
 </script>
 </script>
 {% endblock %}
+
 
