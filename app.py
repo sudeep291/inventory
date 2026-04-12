@@ -34,26 +34,7 @@ _LOGIN_LOCKOUT = {}
 MAX_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
 
-import secrets
-def generate_csrf_token():
-    if '_csrf_token' not in session:
-        session['_csrf_token'] = secrets.token_hex(32)
-    return session['_csrf_token']
 
-app.jinja_env.globals['csrf_token'] = generate_csrf_token
-
-from functools import wraps
-def csrf_protected(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-            token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
-            expected = session.get('_csrf_token')
-            if not token or token != expected:
-                logger.warning(f"🛡️ CSRF FAILURE: Path={request.path}, TokenSet={bool(token)}, Match={token == expected}")
-                return jsonify({"error": "Forbidden: Security token missing or invalid. Please refresh and try again."}), 403
-        return f(*args, **kwargs)
-    return decorated_function
 
 def save_cache_to_disk():
     try:
@@ -248,6 +229,28 @@ app.config.update(
 
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 Compress(app)
+
+# 🛡️ CSRF & SECURITY CONFIGURATION
+import secrets
+def generate_csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = secrets.token_hex(32)
+    return session['_csrf_token']
+
+app.jinja_env.globals['csrf_token'] = generate_csrf_token
+
+from functools import wraps
+def csrf_protected(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+            token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            expected = session.get('_csrf_token')
+            if not token or token != expected:
+                logger.warning(f"🛡️ CSRF FAILURE: Path={request.path}, TokenSet={bool(token)}, Match={token == expected}")
+                return jsonify({"error": "Forbidden: Security token missing or invalid. Please refresh and try again."}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.after_request
 def add_security_headers(response):
