@@ -1,4 +1,4 @@
-{% extends 'layout.html' %}
+﻿{% extends 'layout.html' %}
 {% block head %}
 <link rel="preload" as="image" href="/static/images/bg_update_stock.webp" fetchpriority="high">
 {% endblock %}
@@ -118,7 +118,7 @@
             <div class="premium-result-card">
                 <div class="img-hover-container premium-img-border" onclick="openLightbox(document.getElementById('updateResImg').src)">
                     <img id="updateResImg" src="" alt="Product" style="width:100%; height:100%; object-fit:cover;" loading="lazy" onload="optimizeImage(this)">
-                    <div class="img-hover-btn">🔍 PREVIEW</div>
+                    <div class="img-hover-btn">ðŸ” PREVIEW</div>
                 </div>
                 <div class="result-info">
                     <h3 id="updateResName" class="text-brand-primary"></h3>
@@ -126,7 +126,7 @@
                     <p class="text-brand-mrp" style="height:auto; padding:0.5rem 0; flex-wrap: wrap; border-bottom: 1px dashed rgba(255,255,255,0.1);">
                         <span class="text-brand-label lbl-mrp">Target MRP:</span>
                         <span class="val" style="display:flex; align-items:center; max-width: 100%;">
-                            ₹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:800 !important; font-size:1.6rem !important; width:min(180px, 100%); outline:none; border-bottom:2px solid #3b82f6" oninput="resyncUpdateSold()">
+                            â‚¹<input type="number" id="updateResCP" step="0.01" style="background:transparent; border:none; color:inherit; font-weight:800 !important; font-size:1.6rem !important; width:min(180px, 100%); outline:none; border-bottom:2px solid #3b82f6" oninput="resyncUpdateSold()">
                         </span>
                     </p>
                     
@@ -163,64 +163,74 @@
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
+        // Enhanced 1-Click Barcode Scanner for Updates (Purity Filter)
     let html5QrcodeScanner = null;
 
-    document.getElementById('btnScanBarcodeUpdate').addEventListener('click', () => {
+    const cleanBarcode = (text) => {
+        let cleaned = text.replace(/[^\d]/g, "");
+        if (cleaned.startsWith("890") && cleaned.length > 13) {
+            cleaned = cleaned.substring(0, 13);
+        }
+        return cleaned;
+    };
+
+    document.getElementById('btnScanBarcodeUpdate').addEventListener('click', async () => {
         document.getElementById('readerWrapper').style.display = 'block';
         
         if (!html5QrcodeScanner) {
-            html5QrcodeScanner = new Html5QrcodeScanner(
-                "reader",
+            html5QrcodeScanner = new Html5Qrcode('reader');
+        }
+
+        try {
+            await html5QrcodeScanner.start(
+                { facingMode: 'environment' }, 
                 { 
-                    fps: 10, 
-                    qrbox: {width: 300, height: 200}, 
-                    aspectRatio: 1.0,
-                    videoConstraints: { facingMode: "environment" }
+                    fps: 20, 
+                    qrbox: { width: 300, height: 200 },
+                    formatsToSupport: [ 
+                        Html5QrcodeSupportedFormats.EAN_13, 
+                        Html5QrcodeSupportedFormats.CODE_128 
+                    ]
                 },
-                false
+                (decodedText) => {
+                    stopBarcodeScanner();
+                    
+                    const finalCode = cleanBarcode(decodedText);
+                    let foundArticleNo = finalCode;
+
+                    if (typeof productsCache !== 'undefined' && productsCache) {
+                        const matchedP = productsCache.find(p => p.barcode === finalCode || p.article_no.toUpperCase() === finalCode.toUpperCase());
+                        if (matchedP && matchedP.article_no) {
+                            foundArticleNo = matchedP.article_no;
+                        }
+                    }
+
+                    const searchInput = document.getElementById('updateSearchInput');
+                    searchInput.value = foundArticleNo;
+                    showToast("âœ… Auto-Fetched: " + foundArticleNo);
+                    
+                    setTimeout(() => {
+                        searchUpdateProduct();
+                    }, 300);
+                },
+                (err) => {}
             );
-            
-            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        } catch (err) {
+            console.error(err);
+            showToast("â Œ Scanner Error");
+            document.getElementById('readerWrapper').style.display = 'none';
         }
     });
 
     function stopBarcodeScanner() {
         document.getElementById('readerWrapper').style.display = 'none';
         if (html5QrcodeScanner) {
-            try {
-                html5QrcodeScanner.clear();
-            } catch(e) {}
-            html5QrcodeScanner = null;
+            html5QrcodeScanner.stop().catch(() => {}).finally(() => {
+                html5QrcodeScanner = null;
+                document.getElementById('reader').innerHTML = '';
+            });
         }
-    }
-
-    async function onScanSuccess(decodedText, decodedResult) {
-        // Stop scanning immediately on success
-        stopBarcodeScanner();
-        
-        let foundArticleNo = decodedText; // Default to the decoded text
-
-        // Smart Mapping: Search through products cache to see if barcode is linked
-        if (typeof productsCache !== 'undefined' && productsCache) {
-            const matchedP = productsCache.find(p => p.barcode === decodedText || p.article_no.toUpperCase() === decodedText.toUpperCase());
-            if (matchedP && matchedP.article_no) {
-                foundArticleNo = matchedP.article_no;
-            }
-        }
-
-        // Populate the input and auto-trigger the search
-        const searchInput = document.getElementById('updateSearchInput');
-        searchInput.value = foundArticleNo;
-        showToast("✅ Auto-Fetched: " + foundArticleNo);
-        
-        // Small delay to let UI settle, then trigger search
-        setTimeout(() => {
-            searchUpdateProduct();
-        }, 300);
-    }
-
-    function onScanFailure(error) {
-        // handle scan failure silently
     }
 </script>
 {% endblock %}
+
