@@ -236,15 +236,18 @@
 
     const cleanBarcode = (text) => {
         let cleaned = text.replace(/[^\d]/g, "");
-        // 🚀 Smart-Lock: If scan contains your brand prefix 89051661, we isolate it instantly
-        if (cleaned.includes("89051661")) {
-            const startIdx = cleaned.indexOf("89051661");
-            return cleaned.substring(startIdx, startIdx + 13);
+        
+        // 1. Priority: Find any 13-digit Indian barcode (starts with 890) hidden in noise
+        if (cleaned.includes("890")) {
+            const startIdx = cleaned.indexOf("890");
+            const possible = cleaned.substring(startIdx, startIdx + 13);
+            if (possible.length === 13) return possible;
         }
-        // General snapping for other Indian barcodes (starts with 890)
-        if (cleaned.startsWith("890") && cleaned.length > 13) {
-            return cleaned.substring(0, 13);
-        }
+
+        // 2. Secondary: If we have exactly 13 digits (any brand), take it
+        if (cleaned.length === 13) return cleaned;
+
+        // 3. Fallback: Return whatever digits we found (handles EAN-8 or non-standard)
         return cleaned;
     };
 
