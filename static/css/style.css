@@ -1093,7 +1093,7 @@ body.dark-theme .return-toggle.active {
 }
 
 /* Force override html5-qrcode injected buttons */
-#reader button, #readerAdd button, #reader__dashboard_section_csr button, #readerAdd__dashboard_section_csr button {
+#reader button, #readerAdd button, #readerUpdate button, #readerHistory button, #reader__dashboard_section_csr button, #readerAdd__dashboard_section_csr button {
     background: linear-gradient(135deg, #3b82f6, #2563eb) !important;
     color: white !important;
     border: none !important;
@@ -1108,6 +1108,27 @@ body.dark-theme .return-toggle.active {
     display: block !important;
     width: 80% !important;
     max-width: 300px !important;
+}
+
+/* Highlight 'Scan an Image File' link */
+#reader a, #readerAdd a, #readerUpdate a, #readerHistory a {
+    color: #4f46e5 !important;
+    font-weight: 800 !important;
+    text-decoration: none !important;
+    background: #eef2ff !important;
+    padding: 0.6rem 1.2rem !important;
+    border-radius: 8px !important;
+    display: inline-block !important;
+    margin-top: 1rem !important;
+    border: 1px solid #c7d2fe !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
+}
+
+#reader a:hover, #readerAdd a:hover, #readerUpdate a:hover, #readerHistory a:hover {
+    background: #4f46e5 !important;
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(79, 70, 229, 0.3) !important;
 }
 
 #reader button:active, #readerAdd button:active {
