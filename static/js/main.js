@@ -649,6 +649,85 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
     window.requestAnimationFrame(step);
 }
 
+/* ==================================
+   WHATSAPP DAILY REPORT
+================================== */
+function shareWhatsAppReport() {
+    const btn = document.getElementById('waShareBtn');
+    if (btn) {
+        btn.textContent = '⏳ Preparing...';
+        btn.disabled = true;
+    }
+
+    // Read live values already on the page
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    const get = (id) => document.getElementById(id)?.textContent?.trim() || '—';
+
+    // Daily metrics
+    const dPairs    = get('dSold');
+    const dUnique   = get('dUnique');
+    const dRevenue  = get('dRev');
+    const dReturns  = get('dMoneyRet');
+    const dVariance = get('dSurplus');
+
+    // Weekly metrics
+    const wPairs    = get('ovSales');
+    const wRevenue  = get('ovRevenue');
+    const wSurplus  = get('wSurplus');
+
+    // Vault
+    const vault     = get('ovStock');
+    const alerts    = get('sAlert');
+    const returned  = get('ovReturns');
+
+    // Top seller (first item in the rank list)
+    const topEl = document.querySelector('#topSellersList strong');
+    const topSeller = topEl ? topEl.textContent.trim() : '—';
+
+    const msg =
+`🏪 *Sri Vijayalakshmi Footwear*
+📅 *${dateStr}* | 🕐 ${timeStr}
+━━━━━━━━━━━━━━━━━━━━
+
+📦 *TODAY'S PERFORMANCE*
+👟 Pairs Sold : *${dPairs}*
+🎯 Varieties  : *${dUnique}*
+💰 Revenue    : *${dRevenue}*
+↩️ Returned   : *${dReturns}*
+📊 Vs Target  : *${dVariance}*
+
+━━━━━━━━━━━━━━━━━━━━
+📈 *THIS WEEK (Mon–Today)*
+👟 Pairs Sold : *${wPairs}*
+💰 Revenue    : *${wRevenue}*
+📊 Net Surplus: *${wSurplus}*
+
+━━━━━━━━━━━━━━━━━━━━
+🏬 *VAULT STATUS*
+📦 Total Stock     : *${vault} pairs*
+🔴 Low Stock Alerts: *${alerts}*
+↩️ Total Returns   : *${returned}*
+🔥 Top Seller      : *${topSeller}*
+
+━━━━━━━━━━━━━━━━━━━━
+_📲 Sent from Inventory System_`;
+
+    // Restore button
+    setTimeout(() => {
+        if (btn) {
+            btn.innerHTML = `<svg width="22" height="22" viewBox="0 0 32 32" fill="white" xmlns="http://www.w3.org/2000/svg"><path d="M16.002 3C9.374 3 4 8.373 4 15c0 2.385.68 4.61 1.855 6.5L4 29l7.703-1.823A12.93 12.93 0 0016.002 28C22.628 28 28 22.627 28 16S22.628 3 16.002 3zm0 2C21.524 5 26 9.477 26 16s-4.476 11-9.998 11c-1.99 0-3.849-.573-5.432-1.56l-.39-.245-4.57 1.08 1.1-4.46-.27-.41A10.96 10.96 0 016 16C6 9.477 10.479 5 16.002 5zm-3.39 5.5c-.2 0-.524.075-.8.373-.275.299-1.05 1.025-1.05 2.5s1.075 2.9 1.225 3.1c.15.2 2.1 3.2 5.1 4.375 2.998 1.175 2.998.783 3.548.733.55-.05 1.774-.724 2.024-1.424.25-.7.25-1.3.175-1.424-.075-.125-.275-.2-.575-.35-.3-.15-1.774-.875-2.05-.975-.274-.1-.474-.15-.674.15-.2.3-.774.975-.949 1.175-.175.2-.35.225-.65.075-.3-.15-1.267-.467-2.414-1.49-.893-.796-1.495-1.778-1.67-2.078-.175-.3-.019-.462.131-.612.136-.134.3-.35.45-.524.15-.175.2-.3.3-.5.1-.2.05-.375-.025-.525-.075-.15-.65-1.625-.9-2.225-.25-.6-.5-.5-.675-.5l-.575-.013z"/></svg> Share Daily Report on WhatsApp`;
+            btn.disabled = false;
+        }
+    }, 2000);
+
+    window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
 async function loadAdvancedAnalytics() {
     const data = await fetchAPI('/api/sales_advanced');
     if (!data) return;
