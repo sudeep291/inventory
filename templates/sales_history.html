@@ -142,8 +142,8 @@
                     <td>${s.name}</td>
                     <td>${s.size}</td>
                     <td style="font-weight:700">${isReturn ? '-' : ''}${s.qty}</td>
-                    <td>₹${typeof toMoney === 'function' ? toMoney(s.mrp) : s.mrp.toLocaleString()}</td>
-                    <td style="font-weight:600; color:${isReturn ? '#dc2626' : 'inherit'}">${isReturn ? '-' : ''}₹${typeof toMoney === 'function' ? toMoney(s.sold_price) : s.sold_price.toLocaleString()}</td>
+                    <td>Rs. ${typeof toMoney === 'function' ? toMoney(s.mrp) : s.mrp.toLocaleString()}</td>
+                    <td style="font-weight:600; color:${isReturn ? '#dc2626' : 'inherit'}">${isReturn ? '-' : ''}Rs. ${typeof toMoney === 'function' ? toMoney(s.sold_price) : s.sold_price.toLocaleString()}</td>
                     <td>${s.discount || 0}%</td>
                     <td>${statusBadge}</td>
                 `;

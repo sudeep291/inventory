@@ -188,9 +188,9 @@ async function loadOverviewTable() {
                     <span class="badge" style="margin-left:0.5rem">${p.category_name}</span>
                 </div>
                 <div class="prod-meta"><strong>Art:</strong> <span class="val">${p.article_no}</span></div>
-                <div class="prod-meta"><strong>MRP:</strong> <span class="val val-mrp">₹${toMoney(p.mrp)}</span></div>
+                <div class="prod-meta"><strong>MRP:</strong> <span class="val val-mrp">Rs. ${toMoney(p.mrp)}</span></div>
                 <div class="prod-meta"><strong>Base Strategy:</strong> <span class="val val-strategy">${p.default_discount}% Off</span></div>
-                <div class="prod-meta" style="margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px dashed var(--border);"><strong>Target Sold:</strong> <span class="val val-sold">₹${toMoney(p.selling_price)}</span></div>
+                <div class="prod-meta" style="margin-bottom:1rem; padding-bottom:0.75rem; border-bottom:1px dashed var(--border);"><strong>Target Sold:</strong> <span class="val val-sold">Rs. ${toMoney(p.selling_price)}</span></div>
                 
                 <div class="prod-meta"><strong>Total Stock:</strong> <span class="val total-stock-luminous">${p.total_stock}</span></div>
                 
@@ -454,7 +454,7 @@ async function searchUpdateProduct() {
                 </div>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
-                <input type="number" class="batch-update-price" placeholder="Refund ₹" step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
+                <input type="number" class="batch-update-price" placeholder="Refund Rs. " step="0.01" style="width:100px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; display:none;">
                 <input type="number" class="batch-update-val" data-sizeid="${s.id}" data-sizename="${s.size}" data-targetsp="${prod.selling_price || (prod.mrp - (prod.mrp * prod.default_discount / 100))}" placeholder="+Qty" min="1" style="width:80px; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; outline:none; font-family:'Inter'; transition:all 0.3s; background:#f8fafc" oninput="if(this.value>0) { this.style.backgroundColor='#ecfdf5'; this.style.borderColor='#10b981'; this.style.color='#047857'; } else { this.style.backgroundColor='#f8fafc'; this.style.borderColor='#cbd5e1'; this.style.color='inherit'; }; handleRowReturnUI(this); validateBatchBtn()">
             </div>
         `;
@@ -632,7 +632,7 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
         const val = progress * (endVal - startVal) + startVal;
         
         let displayVal = Math.floor(val).toLocaleString();
-        if (formatMoney) displayVal = '₹' + displayVal;
+        if (formatMoney) displayVal = 'Rs. ' + displayVal;
         
         obj.innerHTML = displayVal;
         
@@ -640,7 +640,7 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
             window.requestAnimationFrame(step);
         } else {
             let finalVal = Number(endVal).toLocaleString();
-            if (formatMoney) finalVal = '₹' + finalVal;
+            if (formatMoney) finalVal = 'Rs. ' + finalVal;
             obj.innerHTML = finalVal;
         }
     };
@@ -683,8 +683,8 @@ async function loadAdvancedAnalytics() {
         // Hero Analytics (Synchronized with Overall Database)
         animateValue(document.getElementById('ovSales'), 0, data.weekly.pairs, 1500);
         animateValue(document.getElementById('ovRevenue'), 0, data.weekly.revenue, 1500, true);
-        animateValue(document.getElementById('ovStock'), 0, data.overall.vault_stock, 1500);
-        animateValue(document.getElementById('ovReturns'), 0, data.daily.returns, 1500);
+        animateValue(document.getElementById('ovStock'), 0, (data.overall ? data.overall.vault_stock : data.stock.total_stock), 1500);
+        animateValue(document.getElementById('ovReturns'), 0, data.stock.total_returned, 1500);
 
         // Comparison Intelligence Logic
         const compRevEl = document.getElementById('compareRevenue');
@@ -702,20 +702,20 @@ async function loadAdvancedAnalytics() {
             } else if (diff >= 0) {
                 compRevEl.className = 'badge-compare up';
                 icon.innerHTML = '↑';
-                text.innerHTML = `+₹${toMoney(diff)} vs Last Week`;
+                text.innerHTML = `+Rs. ${toMoney(diff)} vs Last Week`;
             } else {
                 compRevEl.className = 'badge-compare down';
                 icon.innerHTML = '↓';
-                text.innerHTML = `-₹${toMoney(Math.abs(diff))} vs Last Week`;
+                text.innerHTML = `-Rs. ${toMoney(Math.abs(diff))} vs Last Week`;
             }
         }
 
         // Profit Matrix (Net System Performance)
         const plProfEl = document.getElementById('plProf');
-        if (plProfEl) animateValue(plProfEl, 0, data.overall.net_surplus, 1200, true);
+        if (plProfEl) animateValue(plProfEl, 0, (data.overall ? data.overall.net_surplus : 0), 1200, true);
         
         const plRetEl = document.getElementById('plReturned');
-        if (plRetEl) animateValue(plRetEl, 0, data.overall.money_returned, 1200, true);
+        if (plRetEl) animateValue(plRetEl, 0, (data.overall ? data.overall.money_returned : 0), 1200, true);
 
         // Stock Status
         animateValue(document.getElementById('sCurr'), 0, data.stock.total_stock, 1000);
@@ -931,9 +931,9 @@ function resyncUpdateSold() {
     
     if (mrp > 0) {
         const newSold = mrp - (mrp * disc / 100);
-        soldSpan.textContent = '?' + newSold.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        soldSpan.textContent = 'Rs. ' + newSold.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
     } else {
-        soldSpan.textContent = '?0.00';
+        soldSpan.textContent = 'Rs. 0.00';
     }
 }
 

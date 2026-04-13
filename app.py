@@ -750,14 +750,6 @@ def api_stock_adjust():
     except Exception as e:
         logger.error(f"Transactional Stock Adjust Error: {e}")
         return jsonify({"error": str(e)}), 500
-            
-        import threading
-        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
-
-        return jsonify({"success": True})
-    except Exception as e:
-        logger.error(f"api_stock_adjust error: {e}")
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/stock/adjust_batch', methods=['POST'])
@@ -858,13 +850,6 @@ def api_adjust_stock_batch():
     except Exception as e:
         logger.error(f"Batch Transaction Error: {e}")
         return jsonify({"error": str(e)}), 500
-
-        import threading
-        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
-        return jsonify({"success": True})
-    except Exception as e:
-        logger.error(f"api_adjust_stock_batch error: {e}")
-        return jsonify({"error": str(e)}), 400
 
 
 @app.route('/api/returns/stats')
@@ -1064,6 +1049,12 @@ def get_consolidated_analytics():
                 "revenue": round(weekly_rev, 2),
                 "net_surplus": round(weekly_surplus, 2),
                 "money_returned": round(weekly_money_returned, 2)
+            },
+            "overall": {
+                "pairs": total_pairs,
+                "net_surplus": round(total_surplus, 2),
+                "money_returned": round(total_money_returned, 2),
+                "vault_stock": total_stock
             },
             "chart": {"labels": chart_labels, "data": chart_data},
             "stock": {
