@@ -631,16 +631,18 @@ function animateValue(obj, start, end, duration, formatMoney = false) {
         const progress = Math.min((timestamp - startTimestamp) / duration, 1);
         const val = progress * (endVal - startVal) + startVal;
         
-        let displayVal = Math.floor(val).toLocaleString();
-        if (formatMoney) displayVal = 'Rs. ' + displayVal;
+        // For money: show 2 decimals. For counts: show whole numbers.
+        let displayVal = formatMoney ? val.toFixed(2) : Math.floor(val).toLocaleString();
+        if (formatMoney) displayVal = 'Rs. ' + parseFloat(displayVal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
         
         obj.innerHTML = displayVal;
         
         if (progress < 1) {
             window.requestAnimationFrame(step);
         } else {
-            let finalVal = Number(endVal).toLocaleString();
-            if (formatMoney) finalVal = 'Rs. ' + finalVal;
+            let finalVal = formatMoney
+                ? 'Rs. ' + Number(endVal).toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                : Number(endVal).toLocaleString();
             obj.innerHTML = finalVal;
         }
     };
@@ -743,24 +745,27 @@ async function loadAdvancedAnalytics() {
             document.querySelectorAll('.progress-bar').forEach(b => b.style.width = b.getAttribute('data-target'));
         }, 100);
 
-        // Sorting for Top/Low Performers
+        // Sorting for Top/Low Performers — by quantity sold
         let sortedArticles = [...data.articles].sort((a,b) => b.qty - a.qty);
         let top5 = sortedArticles.slice(0, 5);
-        let bot5 = sortedArticles.slice(-5).reverse();
+        let bot5 = sortedArticles.filter(r => r.qty > 0).slice(-5).reverse();
 
         function renderList(targetId, arr) {
             let html = '';
             arr.forEach((r, idx) => {
                 let badgeClass = (idx===0) ? 'rank-1' : ((idx===1) ? 'rank-2' : ((idx===2)?'rank-3':'rank-other'));
+                // strategy_var: positive = sold above target, negative = sold below target
+                const sv = r.strategy_var || 0;
+                const svLabel = sv >= 0
+                    ? `<span class="text-profit" style="font-size:0.75rem; font-weight:700;">+Rs. ${toMoney(sv)} above target</span>`
+                    : `<span class="text-loss" style="font-size:0.75rem; font-weight:700;">Rs. ${toMoney(Math.abs(sv))} below target</span>`;
                 html += `
                 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(255,255,255,0.4); padding:0.75rem; border-radius:8px;">
                     <div style="display:flex; align-items:center;">
                         <span class="rank-badge ${badgeClass}">${idx+1}</span>
                         <div style="display:flex; flex-direction:column;">
-                            <strong style="color:#78350f; font-size:0.9rem;">${r.article_no}</strong>
-                            <span class="${r.profit >= 0 ? 'text-profit' : 'text-loss'}" style="font-size:0.75rem; font-weight:700;">
-                                ${r.profit >= 0 ? '+' : ''}${toMoney(r.profit)}
-                            </span>
+                            <strong style="color:#78350f; font-size:0.9rem;">${r.article_no} — ${r.name || ''}</strong>
+                            ${svLabel}
                         </div>
                     </div>
                     <strong style="color:#92400e; font-size:1rem;">${r.qty} pairs</strong>

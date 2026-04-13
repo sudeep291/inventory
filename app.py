@@ -914,25 +914,32 @@ def api_analytics_heatmap():
 def get_consolidated_analytics():
     """Enterprise consolidated analytics – all computed in Python from Firestore docs."""
     global GLOBAL_ANALYTICS_CACHE
+    # Use module-level connection (safe for background threads and scheduler)
     db = get_db_connection()
     if not db: return None
 
     try:
         now = datetime.datetime.now(datetime.timezone.utc)
         today_start = datetime.datetime(now.year, now.month, now.day, tzinfo=datetime.timezone.utc)
-        week_start = today_start - datetime.timedelta(days=7)
+        # Proper calendar-week: start from last Monday (matches UI label "Resets Every Monday")
+        days_since_monday = now.weekday()  # Monday=0, Sunday=6
+        week_start = today_start - datetime.timedelta(days=days_since_monday)
 
         # Fetch all sales
         all_sales = list(db.collection('Sales').stream())
 
-        daily_pairs = 0; daily_unique_pids = set(); daily_returns = 0
-        daily_rev = 0.0; daily_surplus = 0.0; daily_money_returned = 0.0
+        # Separate counters for SALES and RETURNS (never mix)
+        daily_sold_pairs = 0; daily_returned_pairs = 0; daily_unique_pids = set()
+        daily_rev = 0.0; daily_strategy_var = 0.0; daily_money_returned = 0.0
 
-        weekly_pairs = 0; weekly_rev = 0.0; weekly_surplus = 0.0; weekly_money_returned = 0.0
-        total_pairs = 0; total_surplus = 0.0; total_money_returned = 0.0
+        weekly_sold_pairs = 0; weekly_returned_pairs = 0
+        weekly_rev = 0.0; weekly_strategy_var = 0.0; weekly_money_returned = 0.0
+
+        total_sold_pairs = 0; total_returned_pairs = 0
+        total_strategy_var = 0.0; total_money_returned = 0.0
 
         date_qty_map = {}
-        article_map = {}  # article_no -> {name, qty, revenue, profit}
+        article_map = {}  # article_no -> {name, qty, revenue, strategy_var}
 
         for sdoc in all_sales:
             sd = sdoc.to_dict()
@@ -943,6 +950,8 @@ def get_consolidated_analytics():
             pid = sd.get('product_id', '')
             article_no = sd.get('article_no', '')
             pname = sd.get('product_name', '')
+            is_sale = (status == 'SALE')
+            is_return = (status == 'RETURNED')
 
             sale_date = sd.get('sale_date')
             if hasattr(sale_date, 'ToDatetime'):
@@ -950,53 +959,59 @@ def get_consolidated_analytics():
             elif not isinstance(sale_date, datetime.datetime):
                 sale_date = None
 
-            # Revenue and surplus calculations
+            # Revenue = what customer paid
             rev = sold_px * qty
-            surplus = (sold_px - selling_px) * qty
-            sign = 1 if status == 'SALE' else -1
+            # Strategy variance = how much above/below the target selling price we sold
+            # Positive = sold above target (premium), Negative = sold below target (discount)
+            strategy_var = (sold_px - selling_px) * qty
 
-            # --- All-time ---
-            total_pairs += sign * qty
-            total_surplus += sign * surplus
-            if status == 'RETURNED':
+            # --- All-time totals ---
+            if is_sale:
+                total_sold_pairs += qty
+                total_strategy_var += strategy_var
+            elif is_return:
+                total_returned_pairs += qty
                 total_money_returned += rev
 
             # --- Weekly ---
             if sale_date and sale_date >= week_start:
-                weekly_pairs += sign * qty
-                weekly_rev += sign * rev
-                weekly_surplus += sign * surplus
-                if status == 'RETURNED':
+                if is_sale:
+                    weekly_sold_pairs += qty
+                    weekly_rev += rev
+                    weekly_strategy_var += strategy_var
+                elif is_return:
+                    weekly_returned_pairs += qty
                     weekly_money_returned += rev
 
             # --- Daily ---
             if sale_date and sale_date >= today_start:
-                daily_pairs += sign * qty
-                daily_rev += sign * rev
-                daily_surplus += sign * surplus
-                if status == 'SALE':
+                if is_sale:
+                    daily_sold_pairs += qty
+                    daily_rev += rev
+                    daily_strategy_var += strategy_var
                     daily_unique_pids.add(pid)
-                if status == 'RETURNED':
-                    daily_returns += qty
+                elif is_return:
+                    daily_returned_pairs += qty
                     daily_money_returned += rev
 
-            # --- Chart (last 7 days) ---
-            if sale_date and sale_date >= week_start:
+            # --- Chart: only count actual sales pairs (not returns) in last 7 chart days ---
+            if sale_date and sale_date >= week_start and is_sale:
                 day_key = sale_date.strftime('%a')
-                date_qty_map[day_key] = date_qty_map.get(day_key, 0) + (sign * qty)
+                date_qty_map[day_key] = date_qty_map.get(day_key, 0) + qty
 
-            # --- Article performance ---
-            if article_no not in article_map:
-                article_map[article_no] = {"name": pname, "qty": 0, "revenue": 0.0, "profit": 0.0}
-            article_map[article_no]["qty"] += sign * qty
-            article_map[article_no]["revenue"] += sign * rev
-            article_map[article_no]["profit"] += sign * surplus
+            # --- Article performance: track sales only ---
+            if is_sale:
+                if article_no not in article_map:
+                    article_map[article_no] = {"name": pname, "qty": 0, "revenue": 0.0, "strategy_var": 0.0}
+                article_map[article_no]["qty"] += qty
+                article_map[article_no]["revenue"] += rev
+                article_map[article_no]["strategy_var"] += strategy_var
 
-        # Build chart labels using last 7 days in order
+        # Build chart labels using current week (Mon to today)
         chart_labels = []
         chart_data = []
-        for i in range(6, -1, -1):
-            d = today_start - datetime.timedelta(days=i)
+        for i in range(days_since_monday + 1):
+            d = week_start + datetime.timedelta(days=i)
             label = d.strftime('%a')
             chart_labels.append(label)
             chart_data.append(date_qty_map.get(label, 0))
@@ -1031,28 +1046,36 @@ def get_consolidated_analytics():
                 total_returned += safe_int(sd.get('quantity', 0))
 
         article_profit = [
-            {"article_no": art, "qty": v["qty"], "revenue": round(v["revenue"], 2), "profit": round(v["profit"], 2)}
+            {
+                "article_no": art,
+                "name": v["name"],
+                "qty": v["qty"],
+                "revenue": round(v["revenue"], 2),
+                "strategy_var": round(v["strategy_var"], 2)
+            }
             for art, v in article_map.items()
         ]
 
         result = {
             "daily": {
-                "pairs": daily_pairs,
+                "pairs": daily_sold_pairs,
                 "unique_pairs": len(daily_unique_pids),
-                "returns": daily_returns,
+                "returns": daily_returned_pairs,
                 "money_returned": round(daily_money_returned, 2),
                 "revenue": round(daily_rev, 2),
-                "net_surplus": round(daily_surplus, 2)
+                "net_surplus": round(daily_strategy_var, 2)
             },
             "weekly": {
-                "pairs": weekly_pairs,
+                "pairs": weekly_sold_pairs,
+                "returns": weekly_returned_pairs,
                 "revenue": round(weekly_rev, 2),
-                "net_surplus": round(weekly_surplus, 2),
+                "net_surplus": round(weekly_strategy_var, 2),
                 "money_returned": round(weekly_money_returned, 2)
             },
             "overall": {
-                "pairs": total_pairs,
-                "net_surplus": round(total_surplus, 2),
+                "pairs": total_sold_pairs,
+                "returns": total_returned_pairs,
+                "net_surplus": round(total_strategy_var, 2),
                 "money_returned": round(total_money_returned, 2),
                 "vault_stock": total_stock
             },
@@ -1079,10 +1102,12 @@ def get_consolidated_analytics():
 
 @app.route('/api/sales_advanced')
 def api_sales_advanced():
-    if GLOBAL_ANALYTICS_CACHE:
-        return jsonify(GLOBAL_ANALYTICS_CACHE)
+    # Always fetch fresh data — cache is only used by background heartbeat
     res = get_consolidated_analytics()
     if res: return jsonify(res)
+    # Fallback: serve stale cache if DB is temporarily unavailable
+    if GLOBAL_ANALYTICS_CACHE:
+        return jsonify(GLOBAL_ANALYTICS_CACHE)
     return jsonify({"error": "No analytics available"}), 500
 
 
