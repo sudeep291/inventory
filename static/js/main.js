@@ -181,21 +181,29 @@ async function loadOverviewTable() {
             </div>`;
         } else {
             imageSectionHTML = `
-            <div style="position:relative; cursor:pointer; height:200px;
+            <div style="position:relative; height:200px;
                  background:linear-gradient(135deg, #fdf8f0, #faf0e0);
                  border-bottom:1px solid #e8d5b7; display:flex; flex-direction:column; align-items:center;
-                 justify-content:center; gap:0.75rem; transition:background 0.3s;"
-                 onmouseenter="this.style.background='linear-gradient(135deg,#fdf3e3,#f5e6cc)'"
-                 onmouseleave="this.style.background='linear-gradient(135deg,#fdf8f0,#faf0e0)'"
-                 onclick="triggerImageUpload('${p.id}')">
-                <span style="font-size:2.5rem; transition:transform 0.2s ease;">📷</span>
-                <div style="text-align:center;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#92400e; margin-bottom:0.2rem;">Tap to Add Photo</div>
-                    <div style="font-size:0.72rem; color:#a78456;">Click to upload from gallery</div>
+                 justify-content:center; gap:0.6rem;">
+                <span style="font-size:2rem;">🖼️</span>
+                <div style="text-align:center; margin-bottom:0.25rem;">
+                    <div style="font-size:0.82rem; font-weight:700; color:#92400e;">Add Product Photo</div>
                 </div>
-                <div style="background:#92400e; color:#fff8ed; padding:0.4rem 1rem; border-radius:20px;
-                            font-size:0.75rem; font-weight:700; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(146,64,14,0.25);">
-                    + UPLOAD IMAGE
+                <div style="display:flex; gap:0.6rem;">
+                    <button onclick="triggerCameraCapture('${p.id}')" title="Open Camera"
+                        style="background:#1e293b; color:white; border:none; border-radius:10px;
+                               padding:0.5rem 0.9rem; font-size:0.78rem; font-weight:700;
+                               cursor:pointer; display:flex; align-items:center; gap:0.35rem;
+                               box-shadow:0 2px 8px rgba(0,0,0,0.2);">
+                        📸 Camera
+                    </button>
+                    <button onclick="triggerImageUpload('${p.id}')" title="Open Gallery"
+                        style="background:#92400e; color:#fff8ed; border:none; border-radius:10px;
+                               padding:0.5rem 0.9rem; font-size:0.78rem; font-weight:700;
+                               cursor:pointer; display:flex; align-items:center; gap:0.35rem;
+                               box-shadow:0 2px 8px rgba(146,64,14,0.25);">
+                        🖼️ Gallery
+                    </button>
                 </div>
             </div>`;
         }
@@ -228,6 +236,35 @@ async function loadOverviewTable() {
         const lazyImg = card.querySelector('.lazy-img');
         if (lazyImg) imageObserver.observe(lazyImg);
     });
+}
+
+function triggerCameraCapture(productId) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment'; // Forces rear camera directly
+    input.style.cssText = 'position:fixed; top:-9999px; opacity:0; pointer-events:none;';
+    document.body.appendChild(input);
+
+    input.onchange = async (e) => {
+        const file = e.target.files[0];
+        document.body.removeChild(input);
+        if (!file) return;
+        showToast('⏳ Uploading photo...');
+        const formData = new FormData();
+        formData.append('image', file);
+        const data = await fetchAPI(`/api/products/${productId}/image`, { method: 'POST', body: formData });
+        if (data && data.success) {
+            showToast('✅ Photo saved!');
+            await loadOverviewTable();
+        } else {
+            showToast('❌ Upload failed. Try again.');
+        }
+    };
+    input.addEventListener('cancel', () => {
+        if (document.body.contains(input)) document.body.removeChild(input);
+    });
+    input.click();
 }
 
 function triggerImageUpload(productId) {
