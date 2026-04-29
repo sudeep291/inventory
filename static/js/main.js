@@ -298,10 +298,18 @@ async function searchSellProduct() {
     
     const sellImg = document.getElementById('sellResImg');
     if (sellImg) {
-        sellImg.classList.remove('img-loaded');
-        const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        optimizeImage(sellImg);
-        sellImg.src = encodedPath ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${encodedPath}`) : 'https://via.placeholder.com/300x200?text=No+Image';
+        const imgSrc = prod.image_path
+            ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${prod.image_path}`)
+            : null;
+        sellImg.dataset.rawSrc = imgSrc || '';
+        if (imgSrc) {
+            sellImg.src = imgSrc;
+            sellImg.style.display = 'block';
+            sellImg.onerror = () => { sellImg.src = ''; sellImg.style.display = 'none'; };
+        } else {
+            sellImg.src = '';
+            sellImg.style.display = 'none';
+        }
     }
 
     selectedSellProductMRP = prod.mrp;
@@ -428,11 +436,18 @@ async function searchUpdateProduct() {
     
     const updateImg = document.getElementById('updateResImg');
     if (updateImg) {
-        updateImg.classList.remove('img-loaded');
-        const encodedPath = prod.image_path ? encodeURI(prod.image_path) : null;
-        // Use optimizeImage to attach listeners without overriding HTML attributes
-        optimizeImage(updateImg);
-        updateImg.src = encodedPath ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${encodedPath}`) : 'https://via.placeholder.com/300x200?text=No+Image';
+        const imgSrc = prod.image_path
+            ? (prod.image_path.startsWith('data:') ? prod.image_path : `/static/${prod.image_path}`)
+            : null;
+        updateImg.dataset.rawSrc = imgSrc || '';
+        if (imgSrc) {
+            updateImg.src = imgSrc;
+            updateImg.style.display = 'block';
+            updateImg.onerror = () => { updateImg.src = ''; updateImg.style.display = 'none'; };
+        } else {
+            updateImg.src = '';
+            updateImg.style.display = 'none';
+        }
     }
     
     const sizesContainer = document.getElementById('updateResSizes');
@@ -973,14 +988,25 @@ async function loadSizeHeatmap() {
 /* ==================================
    IMAGE LIGHTBOX LOGIC
 ================================== */
+function openProductLightbox(imgId) {
+    // imgId is 'sell' or 'update' — finds the stored raw image src
+    const imgEl = document.getElementById(imgId === 'sell' ? 'sellResImg' : 'updateResImg');
+    if (!imgEl) return;
+    const src = imgEl.dataset.rawSrc || imgEl.src;
+    if (!src) { showToast('No image available for this product.'); return; }
+    openLightbox(src);
+}
+
 function openLightbox(src) {
+    if (!src) { showToast('No image available.'); return; }
     const lb = document.getElementById('imageLightbox');
     const content = document.getElementById('lightboxContent');
     if (!lb || !content) return;
-    
     content.src = src;
     lb.style.display = 'flex';
-    document.body.style.overflow = 'hidden'; // Lock scroll
+    document.body.style.overflow = 'hidden';
+    // Close on Escape key
+    document.onkeydown = (e) => { if (e.key === 'Escape') closeLightbox(); };
 }
 
 function closeLightbox() {
