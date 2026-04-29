@@ -154,30 +154,48 @@ async function loadOverviewTable() {
         
         let imageSectionHTML = '';
         if (p.image_path) {
+            const imgSrc = p.image_path.startsWith('data:') ? p.image_path : '/static/' + p.image_path;
             imageSectionHTML = `
-            <div class="shimmer" style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border);" onmouseenter="this.querySelector('.upload-overlay').style.opacity='1'; this.querySelector('.delete-img-btn').style.opacity='1'" onmouseleave="this.querySelector('.upload-overlay').style.opacity='0'; this.querySelector('.delete-img-btn').style.opacity='0'" onclick="triggerImageUpload(${p.id})">
-                <img class="prod-img lazy-img" data-src="${p.image_path ? (p.image_path.startsWith('data:') ? p.image_path : '/static/' + p.image_path) : 'https://via.placeholder.com/300x200?text=No+Image'}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover;">
-                
-                <div class="fallback-icon" id="fallback-${p.id}" style="display:none; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary);">
-                    <span style="font-size:3rem; margin-bottom:0.5rem;">📁</span>
-                    <span style="font-weight:600; color:var(--primary)">Open Folder to Upload</span>
+            <div style="position:relative; cursor:pointer; height:200px; overflow:hidden; border-bottom:1px solid var(--border);"
+                 onmouseenter="this.querySelector('.cam-overlay').style.opacity='1'; this.querySelector('.del-img-btn').style.opacity='1'"
+                 onmouseleave="this.querySelector('.cam-overlay').style.opacity='0'; this.querySelector('.del-img-btn').style.opacity='0'"
+                 onclick="triggerImageUpload(${p.id})">
+                <img class="prod-img lazy-img"
+                     data-src="${imgSrc}"
+                     alt="${p.name}"
+                     style="width:100%; height:100%; object-fit:cover; transition:transform 0.4s ease;"
+                     onmouseenter="this.style.transform='scale(1.05)'"
+                     onmouseleave="this.style.transform='scale(1)'">
+                <div class="cam-overlay" style="position:absolute; inset:0; background:rgba(15,23,42,0.65); color:white;
+                     display:flex; flex-direction:column; align-items:center; justify-content:center;
+                     opacity:0; transition:opacity 0.3s; pointer-events:none;">
+                    <span style="font-size:2rem; margin-bottom:0.4rem;">📸</span>
+                    <span style="font-size:0.8rem; font-weight:700; letter-spacing:0.5px; text-transform:uppercase;">Update Photo</span>
                 </div>
-
-                <div class="upload-overlay" style="position:absolute; inset:0; background:rgba(15,23,42,0.6); color:white; display:flex; flex-direction:column; align-items:center; justify-content:center; opacity:0; transition:0.3s; font-weight:700;">
-                    <span style="font-size:2rem; margin-bottom:0.5rem;">📸</span>
-                    Update Photo
-                </div>
-                
-                <button class="delete-img-btn" style="position:absolute; top:0.5rem; right:0.5rem; background:#dc2626; color:white; border:none; border-radius:50%; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; transition:0.3s; z-index:10; box-shadow:0 2px 5px rgba(0,0,0,0.5);" onclick="event.stopPropagation(); removeProductImage(${p.id})" title="Remove Image">
-                    <svg style="width:18px; height:18px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                </button>
+                <button class="del-img-btn" title="Remove Image"
+                    style="position:absolute; top:0.5rem; right:0.5rem; background:#dc2626; color:white;
+                           border:none; border-radius:50%; width:30px; height:30px; display:flex; align-items:center;
+                           justify-content:center; cursor:pointer; opacity:0; transition:opacity 0.3s; z-index:10;
+                           box-shadow:0 2px 8px rgba(0,0,0,0.4); font-size:1rem; line-height:1;"
+                    onclick="event.stopPropagation(); removeProductImage(${p.id})">✕</button>
             </div>`;
         } else {
             imageSectionHTML = `
-            <div style="position:relative; cursor:pointer; height:200px; background:var(--bg-surface); border-bottom:1px solid var(--border); display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-secondary); transition:background 0.3s;" onmouseenter="this.style.background='var(--border)'" onmouseleave="this.style.background='var(--bg-surface)'" onclick="triggerImageUpload(${p.id})">
-                <img class="prod-img" id="img-${p.id}" style="display:none;" src="">
-                <span style="font-size:3rem; margin-bottom:0.5rem;">📁</span>
-                <span style="font-weight:600; color:var(--primary);">Open Folder to Upload</span>
+            <div style="position:relative; cursor:pointer; height:200px; background:linear-gradient(135deg,#f8fafc,#f1f5f9);
+                 border-bottom:1px solid var(--border); display:flex; flex-direction:column; align-items:center;
+                 justify-content:center; gap:0.75rem; transition:background 0.3s;"
+                 onmouseenter="this.style.background='linear-gradient(135deg,#eff6ff,#dbeafe)'; this.querySelector('span').style.transform='scale(1.1)'"
+                 onmouseleave="this.style.background='linear-gradient(135deg,#f8fafc,#f1f5f9)'; this.querySelector('span').style.transform='scale(1)'"
+                 onclick="triggerImageUpload(${p.id})">
+                <span style="font-size:2.5rem; transition:transform 0.2s ease;">📷</span>
+                <div style="text-align:center;">
+                    <div style="font-size:0.85rem; font-weight:700; color:#3b82f6; margin-bottom:0.2rem;">Tap to Add Photo</div>
+                    <div style="font-size:0.72rem; color:#94a3b8;">Click to upload from gallery</div>
+                </div>
+                <div style="background:#3b82f6; color:white; padding:0.4rem 1rem; border-radius:20px;
+                            font-size:0.75rem; font-weight:700; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(59,130,246,0.3);">
+                    + UPLOAD IMAGE
+                </div>
             </div>`;
         }
         
