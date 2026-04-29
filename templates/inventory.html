@@ -170,7 +170,7 @@
     document.getElementById('executeSaleForm').addEventListener('submit', handleSaleSubmit);
 
     // Pre-load product cache so search and suggestions work immediately
-    // (DOM is already ready when {% block scripts %} runs, so call directly)
+    // (scripts block runs after DOM is ready, so this fires immediately)
     fetchProducts();
 
     // Allow pressing Enter to trigger search
