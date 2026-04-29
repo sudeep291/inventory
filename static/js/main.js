@@ -159,7 +159,7 @@ async function loadOverviewTable() {
             <div style="position:relative; cursor:pointer; height:200px; overflow:hidden; border-bottom:1px solid var(--border);"
                  onmouseenter="this.querySelector('.cam-overlay').style.opacity='1'; this.querySelector('.del-img-btn').style.opacity='1'"
                  onmouseleave="this.querySelector('.cam-overlay').style.opacity='0'; this.querySelector('.del-img-btn').style.opacity='0'"
-                 onclick="triggerImageUpload(${p.id})">
+                 onclick="triggerImageUpload('${p.id}')">
                 <img class="prod-img lazy-img"
                      data-src="${imgSrc}"
                      alt="${p.name}"
@@ -177,23 +177,24 @@ async function loadOverviewTable() {
                            border:none; border-radius:50%; width:30px; height:30px; display:flex; align-items:center;
                            justify-content:center; cursor:pointer; opacity:0; transition:opacity 0.3s; z-index:10;
                            box-shadow:0 2px 8px rgba(0,0,0,0.4); font-size:1rem; line-height:1;"
-                    onclick="event.stopPropagation(); removeProductImage(${p.id})">✕</button>
+                    onclick="event.stopPropagation(); removeProductImage('${p.id}')">✕</button>
             </div>`;
         } else {
             imageSectionHTML = `
-            <div style="position:relative; cursor:pointer; height:200px; background:linear-gradient(135deg,#f8fafc,#f1f5f9);
-                 border-bottom:1px solid var(--border); display:flex; flex-direction:column; align-items:center;
+            <div style="position:relative; cursor:pointer; height:200px;
+                 background:linear-gradient(135deg, #fdf8f0, #faf0e0);
+                 border-bottom:1px solid #e8d5b7; display:flex; flex-direction:column; align-items:center;
                  justify-content:center; gap:0.75rem; transition:background 0.3s;"
-                 onmouseenter="this.style.background='linear-gradient(135deg,#eff6ff,#dbeafe)'; this.querySelector('span').style.transform='scale(1.1)'"
-                 onmouseleave="this.style.background='linear-gradient(135deg,#f8fafc,#f1f5f9)'; this.querySelector('span').style.transform='scale(1)'"
-                 onclick="triggerImageUpload(${p.id})">
+                 onmouseenter="this.style.background='linear-gradient(135deg,#fdf3e3,#f5e6cc)'"
+                 onmouseleave="this.style.background='linear-gradient(135deg,#fdf8f0,#faf0e0)'"
+                 onclick="triggerImageUpload('${p.id}')">
                 <span style="font-size:2.5rem; transition:transform 0.2s ease;">📷</span>
                 <div style="text-align:center;">
-                    <div style="font-size:0.85rem; font-weight:700; color:#3b82f6; margin-bottom:0.2rem;">Tap to Add Photo</div>
-                    <div style="font-size:0.72rem; color:#94a3b8;">Click to upload from gallery</div>
+                    <div style="font-size:0.85rem; font-weight:700; color:#92400e; margin-bottom:0.2rem;">Tap to Add Photo</div>
+                    <div style="font-size:0.72rem; color:#a78456;">Click to upload from gallery</div>
                 </div>
-                <div style="background:#3b82f6; color:white; padding:0.4rem 1rem; border-radius:20px;
-                            font-size:0.75rem; font-weight:700; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(59,130,246,0.3);">
+                <div style="background:#92400e; color:#fff8ed; padding:0.4rem 1rem; border-radius:20px;
+                            font-size:0.75rem; font-weight:700; letter-spacing:0.5px; box-shadow:0 2px 8px rgba(146,64,14,0.25);">
                     + UPLOAD IMAGE
                 </div>
             </div>`;
