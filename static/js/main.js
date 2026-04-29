@@ -78,7 +78,8 @@ async function fetchAPI(url, options = {}) {
 }
 
 async function fetchProducts() {
-    const data = await fetchAPI('/api/inventory');
+    // Cache-buster ensures images and stock are always fresh (fixes stale image after restart)
+    const data = await fetchAPI('/api/inventory?_t=' + Date.now());
     if (data) productsCache = data.products;
 }
 
@@ -571,7 +572,7 @@ async function executeBatchUpdate() {
    ADD_PRODUCT.HTML
 ================================== */
 async function loadCategoryDropdown() {
-    const data = await fetchAPI('/api/inventory');
+    const data = await fetchAPI('/api/inventory?_t=' + Date.now());
     if(data && data.categories) {
         const select = document.getElementById('categorySelect');
         if(!select) return;
@@ -586,15 +587,67 @@ async function loadCategoryDropdown() {
 
 async function handleCategorySubmit(e) {
     e.preventDefault();
-    const name = document.getElementById('catName').value;
+    const name = document.getElementById('catName').value.trim();
+    if (!name) return;
     const data = await fetchAPI('/api/categories', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name })
     });
     if(data && data.id) { 
-        showToast("Category Added"); 
+        showToast("✅ Category Added!"); 
         document.getElementById('categoryForm').reset(); 
-        loadCategoryDropdown(); 
+        await loadCategoryDropdown();
+        await loadCategoryList();
+    }
+}
+
+async function loadCategoryList() {
+    const container = document.getElementById('categoryListContainer');
+    if (!container) return;
+    const data = await fetchAPI('/api/categories?_t=' + Date.now());
+    if (!data || !Array.isArray(data)) {
+        container.innerHTML = '<div style="color:var(--text-secondary); font-size:0.9rem;">No categories found.</div>';
+        return;
+    }
+    if (data.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-secondary); font-size:0.9rem; padding:0.5rem 0;">No categories yet. Add one above.</div>';
+        return;
+    }
+    container.innerHTML = data.map(cat => `
+        <div style="display:flex; align-items:center; justify-content:space-between; padding:0.75rem 1rem; margin-bottom:0.5rem;
+                    background:var(--bg-white, #f8fafc); border:1px solid var(--border, #e2e8f0); border-radius:10px;
+                    transition:all 0.2s ease; box-shadow:0 1px 3px rgba(0,0,0,0.04);" id="cat-row-${cat.id}">
+            <div style="display:flex; align-items:center; gap:0.6rem;">
+                <span style="font-size:1.1rem;">🏷️</span>
+                <span style="font-weight:600; color:var(--text-primary, #1e293b); font-size:0.95rem;">${cat.name}</span>
+            </div>
+            <button onclick="deleteCategory('${cat.id}', '${cat.name.replace(/'/g, '\\&apos;')}')" 
+                    style="background:#fee2e2; color:#dc2626; border:none; border-radius:8px; padding:0.4rem 0.75rem;
+                           font-size:0.8rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:0.3rem;
+                           transition:all 0.2s ease;"
+                    onmouseover="this.style.background='#dc2626';this.style.color='white';"
+                    onmouseout="this.style.background='#fee2e2';this.style.color='#dc2626';"
+                    title="Delete Category">
+                🗑️ Delete
+            </button>
+        </div>
+    `).join('');
+}
+
+async function deleteCategory(categoryId, categoryName) {
+    if (!confirm(`⚠️ Delete category "${categoryName}"?\n\nThis will fail if any active products are using it.`)) return;
+    const data = await fetchAPI(`/api/categories/${categoryId}`, { method: 'DELETE' });
+    if (data && data.success) {
+        // Animate row removal
+        const row = document.getElementById(`cat-row-${categoryId}`);
+        if (row) {
+            row.style.transition = 'all 0.3s ease';
+            row.style.opacity = '0';
+            row.style.transform = 'translateX(20px)';
+            setTimeout(() => row.remove(), 300);
+        }
+        showToast(`✅ "${categoryName}" deleted!`);
+        await loadCategoryDropdown();
     }
 }
 

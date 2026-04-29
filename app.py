@@ -284,6 +284,62 @@ def add_security_headers(response):
 def enterprise_ping():
     return "SYSTEM_HEALTHY", 200
 
+
+_APP_START_TIME = datetime.datetime.now(datetime.timezone.utc)
+
+@app.route('/api/health')
+def api_health():
+    """Comprehensive health check: DB, cache, scheduler, uptime."""
+    global GLOBAL_ANALYTICS_CACHE
+    uptime_secs = int((datetime.datetime.now(datetime.timezone.utc) - _APP_START_TIME).total_seconds())
+    uptime_str = f"{uptime_secs // 3600}h {(uptime_secs % 3600) // 60}m {uptime_secs % 60}s"
+
+    db_ok = False
+    db_msg = "Not connected"
+    product_count = 0
+    category_count = 0
+    try:
+        db = get_db()
+        if db:
+            cats = list(db.collection('Categories').limit(1).stream())
+            prods = list(db.collection('Products').where(filter=FieldFilter('is_active', '==', True)).limit(200).stream())
+            product_count = len(prods)
+            category_count = len(list(db.collection('Categories').stream()))
+            db_ok = True
+            db_msg = "Firestore connected"
+        else:
+            db_msg = "Firestore client unavailable"
+    except Exception as e:
+        db_msg = f"Error: {str(e)}"
+
+    cache_status = "warm" if GLOBAL_ANALYTICS_CACHE else "cold (empty)"
+    cache_keys = list(GLOBAL_ANALYTICS_CACHE.keys()) if GLOBAL_ANALYTICS_CACHE else []
+
+    scheduler_ok = scheduler.running if 'scheduler' in dir() else False
+
+    status = "healthy" if db_ok else "degraded"
+    code = 200 if db_ok else 503
+
+    return jsonify({
+        "status": status,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "uptime": uptime_str,
+        "database": {
+            "connected": db_ok,
+            "message": db_msg,
+            "active_products": product_count,
+            "categories": category_count
+        },
+        "cache": {
+            "status": cache_status,
+            "keys": cache_keys
+        },
+        "scheduler": {
+            "running": scheduler_ok
+        },
+        "version": "3.0-enterprise"
+    }), code
+
 @app.route('/service-worker.js')
 def serve_sw():
     return send_from_directory('static', 'service-worker.js', mimetype='application/javascript')
@@ -539,6 +595,46 @@ def api_add_category():
         return jsonify({"id": new_id, "name": name})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+
+@app.route('/api/categories/<string:category_id>', methods=['DELETE'])
+@csrf_protected
+def api_delete_category(category_id):
+    """Delete a category — blocked if any active product uses it."""
+    db = get_db()
+    try:
+        # Guard: check no active products use this category
+        using = db.collection('Products').where(
+            filter=FieldFilter('category_id', '==', category_id)
+        ).where(
+            filter=FieldFilter('is_active', '==', True)
+        ).limit(1).stream()
+        if any(True for _ in using):
+            return jsonify({"error": "Cannot delete: active products are using this category. Remove those products first."}), 400
+
+        cat_ref = db.collection('Categories').document(category_id)
+        cat_snap = cat_ref.get()
+        if not cat_snap.exists:
+            return jsonify({"error": "Category not found"}), 404
+
+        cat_ref.delete()
+        import threading
+        threading.Thread(target=enterprise_heartbeat, daemon=True).start()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error(f"Delete category error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/categories')
+def api_get_categories():
+    """Get all categories (for the manage categories list)."""
+    db = get_db()
+    try:
+        cats = fb_get_all_categories(db)
+        return jsonify(cats)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/products', methods=['POST'])

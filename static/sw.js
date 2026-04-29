@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sv-footwear-v17'; // Bump to force update
+const CACHE_NAME = 'sv-footwear-v18'; // Bumped: image cache-buster fix
 const ASSETS_TO_CACHE = [
   '/',
   '/static/css/style.css',

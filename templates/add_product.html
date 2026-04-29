@@ -113,9 +113,18 @@
     <div class="form-container">
         <h2 style="margin-bottom:1.5rem">Manage Categories</h2>
         <form id="categoryForm">
-            <div class="form-group"><label>Category Name</label><input type="text" id="catName" required></div>
-            <button type="submit" class="btn outline full-width" style="border-color:var(--primary); color:var(--primary)">Add Category</button>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group"><label>New Category Name</label><input type="text" id="catName" required placeholder="e.g. Sandals, Running Shoes"></div>
+            <button type="submit" class="btn outline full-width" style="border-color:var(--primary); color:var(--primary)">➕ Add Category</button>
         </form>
+
+        <!-- Existing Categories List -->
+        <div id="categoryListSection" style="margin-top:1.5rem;">
+            <h3 style="font-size:0.9rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom:0.75rem;">Existing Categories</h3>
+            <div id="categoryListContainer">
+                <div style="color:var(--text-secondary); font-size:0.9rem; padding:0.5rem 0;">Loading...</div>
+            </div>
+        </div>
     </div>
 
     <!-- Webcam Modal for Photos -->
@@ -137,6 +146,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         loadCategoryDropdown();
+        loadCategoryList();
         document.getElementById('categoryForm').addEventListener('submit', handleCategorySubmit);
         document.getElementById('productForm').addEventListener('submit', handleProductSubmit);
     });
