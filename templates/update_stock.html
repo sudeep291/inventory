@@ -1,4 +1,4 @@
-﻿{% extends 'layout.html' %}
+{% extends 'layout.html' %}
 {% block head %}
 <link rel="preload" as="image" href="/static/images/bg_update_stock.webp" fetchpriority="high">
 {% endblock %}
@@ -163,6 +163,15 @@
 {% block scripts %}
 <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 <script>
+    // Pre-load product cache so search and suggestions work immediately
+    // (DOM is already ready when {% block scripts %} runs, so call directly)
+    fetchProducts();
+
+    // Allow pressing Enter to trigger search
+    document.getElementById('updateSearchInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); searchUpdateProduct(); }
+    });
+
         // Enhanced 1-Click Barcode Scanner for Updates (Purity Filter)
     let html5QrcodeScanner = null;
 

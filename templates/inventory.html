@@ -169,6 +169,15 @@
 <script>
     document.getElementById('executeSaleForm').addEventListener('submit', handleSaleSubmit);
 
+    // Pre-load product cache so search and suggestions work immediately
+    // (DOM is already ready when {% block scripts %} runs, so call directly)
+    fetchProducts();
+
+    // Allow pressing Enter to trigger search
+    document.getElementById('sellSearchInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); searchSellProduct(); }
+    });
+
         // Enhanced 1-Click Barcode Scanner for Sales (Purity Filter)
     let html5QrcodeScanner = null;
 
