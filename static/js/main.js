@@ -233,33 +233,35 @@ function triggerImageUpload(productId) {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
+    // No capture attribute — allows both camera AND gallery on mobile
+    input.style.cssText = 'position:fixed; top:-9999px; opacity:0; pointer-events:none;';
+
+    // Must be in the DOM for browsers to allow the click
+    document.body.appendChild(input);
+
     input.onchange = async (e) => {
         const file = e.target.files[0];
-        if(!file) return;
-        
-        const imgEl = document.getElementById(`img-${productId}`);
-        const shimmerEl = imgEl ? imgEl.closest('div') : null;
-        const originalSrc = imgEl ? imgEl.src : '';
-        if(imgEl) {
-            imgEl.src = 'https://via.placeholder.com/300x200?text=Uploading...';
-            imgEl.style.display = 'block';
-            if(shimmerEl) {
-                const folders = shimmerEl.querySelectorAll('span');
-                folders.forEach(f => f.style.display = 'none');
-            }
-        }
-        
-        
+        document.body.removeChild(input); // Clean up immediately
+        if (!file) return;
+
+        showToast('⏳ Uploading image...');
+
         const formData = new FormData();
         formData.append('image', file);
         const data = await fetchAPI(`/api/products/${productId}/image`, { method: 'POST', body: formData });
-        if(data && data.success) {
-            showToast("Product Image Updated!");
-            await loadOverviewTable(); // Reload to get fresh components
+        if (data && data.success) {
+            showToast('✅ Image updated!');
+            await loadOverviewTable();
         } else {
-            if(imgEl) imgEl.src = originalSrc;
+            showToast('❌ Upload failed. Try again.');
         }
     };
+
+    // Clean up if user cancels without selecting
+    input.addEventListener('cancel', () => {
+        if (document.body.contains(input)) document.body.removeChild(input);
+    });
+
     input.click();
 }
 
