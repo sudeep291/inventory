@@ -363,9 +363,9 @@ async function searchSellProduct() {
         if (imgSrc) {
             sellImg.src = imgSrc;
             sellImg.style.display = 'block';
-            sellImg.onerror = () => { sellImg.src = ''; sellImg.style.display = 'none'; };
+            sellImg.onerror = () => { sellImg.removeAttribute('src'); sellImg.style.display = 'none'; };
         } else {
-            sellImg.src = '';
+            sellImg.removeAttribute('src');
             sellImg.style.display = 'none';
         }
     }
@@ -501,9 +501,9 @@ async function searchUpdateProduct() {
         if (imgSrc) {
             updateImg.src = imgSrc;
             updateImg.style.display = 'block';
-            updateImg.onerror = () => { updateImg.src = ''; updateImg.style.display = 'none'; };
+            updateImg.onerror = () => { updateImg.removeAttribute('src'); updateImg.style.display = 'none'; };
         } else {
-            updateImg.src = '';
+            updateImg.removeAttribute('src');
             updateImg.style.display = 'none';
         }
     }
@@ -1050,17 +1050,23 @@ function openProductLightbox(imgId) {
     // imgId is 'sell' or 'update' — finds the stored raw image src
     const imgEl = document.getElementById(imgId === 'sell' ? 'sellResImg' : 'updateResImg');
     if (!imgEl) return;
-    const src = imgEl.dataset.rawSrc || imgEl.src;
-    if (!src) { showToast('No image available for this product.'); return; }
+    const src = imgEl.dataset.rawSrc || imgEl.getAttribute('src');
+    if (!src || src === '' || src === window.location.href) { showToast('No image available for this product.'); return; }
     openLightbox(src);
 }
 
 function openLightbox(src) {
-    if (!src) { showToast('No image available.'); return; }
+    if (!src || src === '' || src === window.location.href) { showToast('No image available.'); return; }
     const lb = document.getElementById('imageLightbox');
     const content = document.getElementById('lightboxContent');
     if (!lb || !content) return;
+    
+    // Force image to be fully visible
+    content.style.opacity = '1';
+    content.style.visibility = 'visible';
+    content.style.display = 'block';
     content.src = src;
+    
     lb.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     // Close on Escape key
@@ -1070,6 +1076,9 @@ function openLightbox(src) {
 function closeLightbox() {
     const lb = document.getElementById('imageLightbox');
     if (!lb) return;
+    
+    const content = document.getElementById('lightboxContent');
+    if (content) content.removeAttribute('src');
     
     lb.style.display = 'none';
     document.body.style.overflow = ''; // Unlock scroll

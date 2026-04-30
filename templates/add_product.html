@@ -100,7 +100,7 @@
                 <input type="file" name="image" id="productImage" accept="image/*" style="display:none;" onchange="handleFileSelect(this)">
                 
                 <div id="imagePreviewContainer" style="margin-top: 1rem; display: none; text-align: center;">
-                    <img id="imagePreview" src="" alt="Preview" style="max-height: 250px; width: auto; border-radius: 12px; border: 2px solid var(--primary); margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <img id="imagePreview" alt="Preview" style="max-height: 250px; width: auto; border-radius: 12px; border: 2px solid var(--primary); margin-bottom: 0.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); cursor: zoom-in;" onclick="openLightbox(this.src)">
                     <div>
                         <button type="button" class="btn danger outline" style="padding:0.5rem 1rem; font-size:0.8rem;" onclick="clearImage()">Remove Photo</button>
                     </div>
@@ -186,7 +186,7 @@
     function clearImage() {
         document.getElementById('productImage').value = '';
         document.getElementById('imagePreviewContainer').style.display = 'none';
-        document.getElementById('imagePreview').src = '';
+        document.getElementById('imagePreview').removeAttribute('src');
     }
 
     /* --- Webcam Logic --- */
