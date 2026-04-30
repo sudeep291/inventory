@@ -863,79 +863,121 @@ def api_adjust_stock_batch():
         import uuid
         new_mrp = data.get('new_mrp')
 
-        for up in updates:
-            amount = safe_int(up.get('amount'))
-            if amount <= 0: continue
-            is_return = up.get('is_return', False)
-
-            if up.get('is_new'):
-                product_id = up.get('product_id')
-                size = safe_float(up.get('size'))
-                p_ref = db.collection('Products').document(product_id)
-                p_snap = p_ref.get(transaction=transaction)
-                if not p_snap.exists: continue
-                
-                p_data = p_snap.to_dict()
-                sizes = p_data.get('sizes', [])
-                found = False
+        # --- Phase 1: Group all updates by product to avoid stale overwrites ---
+        # For "new" sizes, we already have the product_id.
+        # For existing sizes, we need to find which product owns the size_id.
+        
+        # First, build a map of size_id -> product for existing size updates
+        existing_size_updates = [up for up in updates if not up.get('is_new') and safe_int(up.get('amount')) > 0]
+        new_size_updates = [up for up in updates if up.get('is_new') and safe_int(up.get('amount')) > 0]
+        
+        # Fetch all active products ONCE to build a lookup
+        products_ref = db.collection('Products').where(filter=FieldFilter('is_active', '==', True))
+        all_product_docs = {doc.id: doc for doc in products_ref.stream(transaction=transaction)}
+        
+        # Build size_id -> product_id lookup
+        size_to_product = {}
+        for pid, pdoc in all_product_docs.items():
+            pd = pdoc.to_dict()
+            for sz in pd.get('sizes', []):
+                size_to_product[sz.get('id')] = pid
+        
+        # --- Phase 2: Group all changes per product ---
+        # product_id -> { "size_changes": [{size_id, amount, is_return, price}], "new_sizes": [{size, amount, is_return, price}] }
+        product_changes = {}
+        
+        for up in existing_size_updates:
+            size_id = up.get('size_id')
+            pid = size_to_product.get(size_id)
+            if not pid:
+                continue
+            if pid not in product_changes:
+                product_changes[pid] = {"size_changes": [], "new_sizes": []}
+            product_changes[pid]["size_changes"].append({
+                "size_id": size_id,
+                "amount": safe_int(up.get('amount')),
+                "is_return": up.get('is_return', False),
+                "price": up.get('price', 0)
+            })
+        
+        for up in new_size_updates:
+            pid = up.get('product_id')
+            if not pid:
+                continue
+            if pid not in product_changes:
+                product_changes[pid] = {"size_changes": [], "new_sizes": []}
+            product_changes[pid]["new_sizes"].append({
+                "size": safe_float(up.get('size')),
+                "amount": safe_int(up.get('amount')),
+                "is_return": up.get('is_return', False),
+                "price": up.get('price', 0)
+            })
+        
+        # --- Phase 3: Apply ALL changes for each product in a single update ---
+        for pid, changes in product_changes.items():
+            pdoc = all_product_docs.get(pid)
+            if not pdoc:
+                continue
+            p_data = pdoc.to_dict()
+            sizes = p_data.get('sizes', [])
+            
+            # Apply existing size stock changes
+            for sc in changes["size_changes"]:
                 for sz in sizes:
-                    if sz.get('size') == size:
-                        sz['stock'] += amount
-                        found = True
+                    if sz.get('id') == sc["size_id"]:
+                        sz['stock'] = safe_int(sz.get('stock', 0)) + sc["amount"]
                         break
-                if not found:
-                    sizes.append({"id": str(uuid.uuid4()), "size": size, "stock": amount})
                 
-                transaction.update(p_ref, {'sizes': sizes})
-                
-                if is_return:
+                # Log return if applicable
+                if sc["is_return"]:
                     sale_ref = db.collection('Sales').document()
+                    matched_size = next((sz for sz in sizes if sz.get('id') == sc["size_id"]), {})
                     transaction.set(sale_ref, {
-                        'product_id': product_id, 'product_name': p_data.get('name', ''),
-                        'article_no': p_data.get('article_no', ''), 'size': size,
-                        'quantity': amount, 'sold_price': safe_float(up.get('price'), 0.0),
+                        'product_id': pid, 'product_name': p_data.get('name', ''),
+                        'article_no': p_data.get('article_no', ''), 'size': safe_float(matched_size.get('size')),
+                        'quantity': sc["amount"], 'sold_price': safe_float(sc["price"], 0.0),
                         'selling_price': safe_float(p_data.get('selling_price')),
                         'mrp': safe_float(p_data.get('mrp')),
                         'sale_date': datetime.datetime.now(datetime.timezone.utc), 'status': 'RETURNED'
                     })
-            else:
-                size_id = up.get('size_id')
-                # Find product with this size_id within transaction context
-                # Note: Transactional queries must use the transaction object
-                products_ref = db.collection('Products').where(filter=FieldFilter('is_active', '==', True))
-                p_docs = products_ref.stream(transaction=transaction)
-                for p_snap in p_docs:
-                    pd = p_snap.to_dict()
-                    sizes = pd.get('sizes', [])
-                    for sz in sizes:
-                        if sz.get('id') == size_id:
-                            sz['stock'] += amount
-                            transaction.update(p_snap.reference, {'sizes': sizes})
-                            if is_return:
-                                sale_ref = db.collection('Sales').document()
-                                transaction.set(sale_ref, {
-                                    'product_id': p_snap.id, 'product_name': pd.get('name', ''),
-                                    'article_no': pd.get('article_no', ''), 'size': safe_float(sz.get('size')),
-                                    'quantity': amount, 'sold_price': safe_float(up.get('price'), 0.0),
-                                    'selling_price': safe_float(pd.get('selling_price')),
-                                    'mrp': safe_float(pd.get('mrp')),
-                                    'sale_date': datetime.datetime.now(datetime.timezone.utc), 'status': 'RETURNED'
-                                })
-                            break
+            
+            # Apply new size additions
+            for ns in changes["new_sizes"]:
+                found = False
+                for sz in sizes:
+                    if sz.get('size') == ns["size"]:
+                        sz['stock'] = safe_int(sz.get('stock', 0)) + ns["amount"]
+                        found = True
+                        break
+                if not found:
+                    sizes.append({"id": str(uuid.uuid4()), "size": ns["size"], "stock": ns["amount"]})
+                
+                # Log return if applicable
+                if ns["is_return"]:
+                    sale_ref = db.collection('Sales').document()
+                    transaction.set(sale_ref, {
+                        'product_id': pid, 'product_name': p_data.get('name', ''),
+                        'article_no': p_data.get('article_no', ''), 'size': ns["size"],
+                        'quantity': ns["amount"], 'sold_price': safe_float(ns["price"], 0.0),
+                        'selling_price': safe_float(p_data.get('selling_price')),
+                        'mrp': safe_float(p_data.get('mrp')),
+                        'sale_date': datetime.datetime.now(datetime.timezone.utc), 'status': 'RETURNED'
+                    })
+            
+            # Single atomic update for this product's sizes
+            transaction.update(pdoc.reference, {'sizes': sizes})
 
+        # --- Phase 4: MRP update if changed ---
         if new_mrp:
             nm = safe_float(new_mrp)
             if nm > 0:
-                for up in updates:
-                    pid = up.get('product_id')
-                    if pid:
-                        p_ref = db.collection('Products').document(pid)
-                        p_snap = p_ref.get(transaction=transaction)
-                        if p_snap.exists:
-                            disc = safe_float(p_snap.to_dict().get('default_discount', 0))
-                            new_sp = round(nm - (nm * disc / 100.0), 2)
-                            transaction.update(p_snap.reference, {'mrp': nm, 'selling_price': new_sp})
-                        break
+                for pid in product_changes:
+                    pdoc = all_product_docs.get(pid)
+                    if pdoc and pdoc.exists:
+                        disc = safe_float(pdoc.to_dict().get('default_discount', 0))
+                        new_sp = round(nm - (nm * disc / 100.0), 2)
+                        transaction.update(pdoc.reference, {'mrp': nm, 'selling_price': new_sp})
+                    break
         return {"success": True}
 
     try:
